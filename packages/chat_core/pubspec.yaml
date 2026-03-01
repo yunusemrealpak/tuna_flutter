@@ -9,12 +9,9 @@ dependencies:
   http: ^1.4.0
   web_socket_channel: ^3.0.2
   drift: ^2.23.1
-  sqlite3_flutter_libs: ^0.5.29
   dartz: ^0.10.1
   equatable: ^2.0.7
   json_annotation: ^4.9.0
-  connectivity_plus: ^6.1.4
-  path_provider: ^2.1.5
   path: ^1.9.1
 
 dev_dependencies:
