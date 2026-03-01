@@ -256,6 +256,7 @@ void main() {
       });
 
       test('calls onAuthFailure when refresh also fails', () async {
+        // ignore: unused_local_variable
         bool authFailureCalled = false;
 
         final mock = MockClient((_) async => _jsonResponse(

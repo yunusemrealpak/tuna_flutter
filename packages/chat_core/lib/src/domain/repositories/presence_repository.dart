@@ -1,8 +1,11 @@
+import 'package:equatable/equatable.dart';
+
 import '../../core/type_defs.dart';
 
 enum PresenceStatus { online, offline }
 
-class UserPresence {
+/// R007 fix: UserPresence now extends Equatable for reliable BLoC state comparisons.
+class UserPresence extends Equatable {
   const UserPresence({
     required this.userId,
     required this.status,
@@ -12,6 +15,9 @@ class UserPresence {
   final String userId;
   final PresenceStatus status;
   final DateTime? lastSeenAt;
+
+  @override
+  List<Object?> get props => [userId, status, lastSeenAt];
 
   factory UserPresence.fromJson(Map<String, dynamic> json) => UserPresence(
         userId: json['user_id'] as String,

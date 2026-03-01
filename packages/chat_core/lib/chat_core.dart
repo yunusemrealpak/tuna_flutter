@@ -27,9 +27,13 @@ export 'src/data/datasources/remote/token_storage.dart';
 export 'src/data/datasources/remote/api_client.dart';
 export 'src/data/datasources/remote/chat_event.dart';
 export 'src/data/datasources/remote/ws_client.dart';
+export 'src/data/datasources/remote/auth_remote_data_source.dart';
+export 'src/data/datasources/remote/channel_remote_data_source.dart';
+export 'src/data/datasources/remote/message_remote_data_source.dart';
 
 // Data — Local (Drift)
 export 'src/data/datasources/local/app_database.dart';
+export 'src/data/datasources/local/auth_local_data_source.dart';
 export 'src/data/datasources/local/tables/users_table.dart';
 export 'src/data/datasources/local/tables/channels_table.dart';
 export 'src/data/datasources/local/tables/messages_table.dart';
@@ -40,3 +44,12 @@ export 'src/data/datasources/local/daos/channel_dao.dart';
 export 'src/data/datasources/local/daos/message_dao.dart';
 export 'src/data/datasources/local/daos/membership_dao.dart';
 export 'src/data/datasources/local/daos/pending_event_dao.dart';
+
+// Data — Repositories
+export 'src/data/repositories/auth_repository_impl.dart';
+export 'src/data/repositories/channel_repository_impl.dart';
+export 'src/data/repositories/message_repository_impl.dart';
+
+// Data — Sync
+export 'src/data/sync/event_handler.dart';
+export 'src/data/sync/sync_engine.dart';

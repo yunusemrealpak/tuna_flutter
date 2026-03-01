@@ -112,6 +112,9 @@ class Channel extends Equatable {
       case 'public':
         return ChannelType.public;
       default:
+        // R010: warn on unknown enum values to surface API contract regressions.
+        // ignore: avoid_print
+        print('[chat_core] WARNING: Unknown ChannelType value "$raw", defaulting to group.');
         return ChannelType.group;
     }
   }

@@ -69,6 +69,9 @@ class Message extends Equatable {
       case 'failed':
         return MessageStatus.failed;
       default:
+        // R010: warn on unknown enum values to surface API contract regressions.
+        // ignore: avoid_print
+        print('[chat_core] WARNING: Unknown MessageStatus value "$raw", defaulting to sent.');
         return MessageStatus.sent;
     }
   }

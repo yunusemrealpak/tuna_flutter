@@ -10,3 +10,6 @@ export 'src/chat_sdk.dart';
 
 // DI
 export 'src/di/injection.dart';
+
+// Token storage
+export 'src/data/datasources/local/secure_token_storage.dart';
