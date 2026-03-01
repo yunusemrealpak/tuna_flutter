@@ -1,7 +1,6 @@
 import 'package:chat_core/src/data/datasources/local/app_database.dart';
 import 'package:chat_core/src/data/sync/event_handler.dart';
 import 'package:chat_core/src/data/datasources/remote/chat_event.dart';
-import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:test/test.dart';
 

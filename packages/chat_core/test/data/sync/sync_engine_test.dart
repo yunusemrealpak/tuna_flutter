@@ -4,7 +4,6 @@ import 'package:chat_core/src/data/datasources/local/app_database.dart';
 import 'package:chat_core/src/data/sync/sync_engine.dart';
 import 'package:chat_core/src/data/datasources/remote/api_client.dart';
 import 'package:chat_core/src/data/datasources/remote/token_storage.dart';
-import 'package:chat_core/src/data/datasources/local/tables/pending_events_table.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:http/http.dart' as http;

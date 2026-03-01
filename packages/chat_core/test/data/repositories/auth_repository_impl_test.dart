@@ -4,7 +4,6 @@ import 'package:chat_core/src/data/datasources/local/auth_local_data_source.dart
 import 'package:chat_core/src/data/datasources/remote/auth_remote_data_source.dart';
 import 'package:chat_core/src/data/repositories/auth_repository_impl.dart';
 import 'package:chat_core/src/domain/entities/user.dart';
-import 'package:dartz/dartz.dart';
 import 'package:test/test.dart';
 
 // ── Fakes ─────────────────────────────────────────────────────────────────
