@@ -17,10 +17,14 @@ class _FakeTokenStorage implements TokenStorage {
   @override
   Future<String?> getRefreshToken() async => 'refresh-token';
   @override
+  Future<String?> getSavedUserId() async => null;
+  @override
   Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
   }) async {}
+  @override
+  Future<void> saveUserId(String userId) async {}
   @override
   Future<void> clearTokens() async {}
 }
@@ -110,6 +114,31 @@ void main() {
       expect(httpClient.requests, isNotEmpty);
       expect(httpClient.requests.first.url.path,
           contains('/channels/c1/messages'));
+    });
+
+    test('sends X-Idempotency-Key header (R-M3-008)', () async {
+      httpClient.handler = (_) => http.Response(
+            jsonEncode({'data': {'id': 'm1'}}),
+            200,
+          );
+
+      await engine.enqueue(
+        eventType: 'message.send',
+        payload: {
+          'channel_id': 'c1',
+          'text': 'Hello',
+          'idempotency_key': 'idem-key-42',
+        },
+      );
+
+      engine.start();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(httpClient.requests, isNotEmpty);
+      final headers = httpClient.requests.first.headers;
+      expect(headers['X-Idempotency-Key'], 'idem-key-42');
+      // Old header name must NOT be present.
+      expect(headers.containsKey('Idempotency-Key'), isFalse);
     });
 
     test('increments retry count on failure and keeps event', () async {

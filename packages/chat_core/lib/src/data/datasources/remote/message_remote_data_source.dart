@@ -49,7 +49,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       'parent_id': parentId,
     }..removeWhere((k, v) => v == null);
     final headers = <String, String>{
-      'Idempotency-Key': idempotencyKey ?? '',
+      'X-Idempotency-Key': idempotencyKey ?? '',
     }..removeWhere((k, v) => v.isEmpty);
     final response = await _client.post(
       '/channels/$channelId/messages',
@@ -124,12 +124,17 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     String? cursor,
     int limit = 50,
   }) async {
+    // Thread messages are fetched via the same messages endpoint with a
+    // parent_id filter. There is no dedicated thread endpoint in the API
+    // contract (see api_contract.md). Backend filters by parent_id when
+    // this query param is present.
     final params = <String, String>{
       'limit': limit.toString(),
+      'parent_id': parentId,
       'cursor': cursor ?? '',
     }..removeWhere((k, v) => v.isEmpty);
     final response = await _client.get(
-      '/channels/$channelId/messages/$parentId/thread',
+      '/channels/$channelId/messages',
       queryParams: params,
     );
     final items = (response.data?['messages'] as List<dynamic>?)

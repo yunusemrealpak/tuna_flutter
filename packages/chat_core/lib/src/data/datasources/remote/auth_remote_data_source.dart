@@ -16,7 +16,7 @@ abstract class AuthRemoteDataSource {
 
   Future<Map<String, dynamic>> refreshToken(String refreshToken);
 
-  Future<void> logout();
+  Future<void> logout(String refreshToken);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -89,7 +89,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> logout() async {
-    await _client.post('/auth/logout', body: {});
+  Future<void> logout(String refreshToken) async {
+    await _client.post(
+      '/auth/logout',
+      body: {'refresh_token': refreshToken},
+    );
   }
 }

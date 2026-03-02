@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 
+// Sentinel used to distinguish "not provided" from explicit null in copyWith.
+const _kUnset = Object();
+
 class User extends Equatable {
   const User({
     required this.id,
@@ -25,16 +28,17 @@ class User extends Equatable {
     String? id,
     String? username,
     String? displayName,
-    String? avatarUrl,
-    DateTime? lastSeenAt,
+    Object? avatarUrl = _kUnset,
+    Object? lastSeenAt = _kUnset,
     DateTime? createdAt,
   }) {
     return User(
       id: id ?? this.id,
       username: username ?? this.username,
       displayName: displayName ?? this.displayName,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
-      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      avatarUrl: avatarUrl == _kUnset ? this.avatarUrl : avatarUrl as String?,
+      lastSeenAt:
+          lastSeenAt == _kUnset ? this.lastSeenAt : lastSeenAt as DateTime?,
       createdAt: createdAt ?? this.createdAt,
     );
   }

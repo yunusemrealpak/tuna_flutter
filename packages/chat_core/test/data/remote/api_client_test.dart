@@ -32,6 +32,12 @@ class _StubTokenStorage implements TokenStorage {
   }
 
   @override
+  Future<String?> getSavedUserId() async => null;
+
+  @override
+  Future<void> saveUserId(String userId) async {}
+
+  @override
   Future<void> clearTokens() async {
     accessToken = null;
     refreshToken = null;

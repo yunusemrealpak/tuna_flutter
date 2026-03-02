@@ -5,9 +5,11 @@
 abstract class TokenStorage {
   Future<String?> getAccessToken();
   Future<String?> getRefreshToken();
+  Future<String?> getSavedUserId();
   Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
   });
+  Future<void> saveUserId(String userId);
   Future<void> clearTokens();
 }

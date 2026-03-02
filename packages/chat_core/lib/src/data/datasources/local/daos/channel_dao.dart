@@ -60,15 +60,11 @@ class ChannelDao extends DatabaseAccessor<AppDatabase> with _$ChannelDaoMixin {
         ),
       );
 
-  Future<void> incrementUnread(String channelId) async {
-    final channel = await findById(channelId);
-    if (channel == null) return;
-    await (update(channelsTable)..where((t) => t.id.equals(channelId))).write(
-      ChannelsTableCompanion(
-        unreadCount: Value(channel.unreadCount + 1),
-      ),
-    );
-  }
+  Future<void> incrementUnread(String channelId) => customUpdate(
+        'UPDATE channels SET unread_count = unread_count + 1 WHERE id = ?',
+        variables: [Variable.withString(channelId)],
+        updates: {channelsTable},
+      );
 
   Future<void> clearUnread(String channelId) =>
       (update(channelsTable)..where((t) => t.id.equals(channelId))).write(

@@ -11,6 +11,7 @@ class SecureTokenStorage implements TokenStorage {
 
   static const _kAccessTokenKey = 'chat_sdk_access_token';
   static const _kRefreshTokenKey = 'chat_sdk_refresh_token';
+  static const _kUserIdKey = 'chat_sdk_user_id';
 
   final FlutterSecureStorage _storage;
 
@@ -19,6 +20,9 @@ class SecureTokenStorage implements TokenStorage {
 
   @override
   Future<String?> getRefreshToken() => _storage.read(key: _kRefreshTokenKey);
+
+  @override
+  Future<String?> getSavedUserId() => _storage.read(key: _kUserIdKey);
 
   @override
   Future<void> saveTokens({
@@ -30,8 +34,13 @@ class SecureTokenStorage implements TokenStorage {
   }
 
   @override
+  Future<void> saveUserId(String userId) =>
+      _storage.write(key: _kUserIdKey, value: userId);
+
+  @override
   Future<void> clearTokens() async {
     await _storage.delete(key: _kAccessTokenKey);
     await _storage.delete(key: _kRefreshTokenKey);
+    await _storage.delete(key: _kUserIdKey);
   }
 }

@@ -105,7 +105,7 @@ class SyncEngine {
           if (payload['parent_id'] != null) 'parent_id': payload['parent_id'],
         };
         final headers = payload['idempotency_key'] != null
-            ? {'Idempotency-Key': payload['idempotency_key'] as String}
+            ? {'X-Idempotency-Key': payload['idempotency_key'] as String}
             : null;
         await _api.post(
           '/channels/$channelId/messages',

@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 
+// Sentinel used to distinguish "not provided" from explicit null in copyWith.
+const _kUnset = Object();
+
 enum MemberRole { owner, admin, member }
 
 class Membership extends Equatable {
@@ -27,16 +30,19 @@ class Membership extends Equatable {
     String? userId,
     String? channelId,
     MemberRole? role,
-    String? lastReadMessageId,
-    DateTime? lastReadAt,
+    Object? lastReadMessageId = _kUnset,
+    Object? lastReadAt = _kUnset,
     DateTime? joinedAt,
   }) {
     return Membership(
       userId: userId ?? this.userId,
       channelId: channelId ?? this.channelId,
       role: role ?? this.role,
-      lastReadMessageId: lastReadMessageId ?? this.lastReadMessageId,
-      lastReadAt: lastReadAt ?? this.lastReadAt,
+      lastReadMessageId: lastReadMessageId == _kUnset
+          ? this.lastReadMessageId
+          : lastReadMessageId as String?,
+      lastReadAt:
+          lastReadAt == _kUnset ? this.lastReadAt : lastReadAt as DateTime?,
       joinedAt: joinedAt ?? this.joinedAt,
     );
   }
@@ -47,7 +53,12 @@ class Membership extends Equatable {
         return MemberRole.owner;
       case 'admin':
         return MemberRole.admin;
+      case 'member':
+        return MemberRole.member;
       default:
+        // R009/R010: warn on unknown role values to surface API contract regressions.
+        // ignore: avoid_print
+        print('[chat_core] WARNING: Unknown MemberRole value "$raw", defaulting to member.');
         return MemberRole.member;
     }
   }

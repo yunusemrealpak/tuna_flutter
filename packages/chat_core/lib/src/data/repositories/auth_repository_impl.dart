@@ -39,6 +39,7 @@ class AuthRepositoryImpl implements AuthRepository {
         accessToken: accessToken,
         refreshToken: refreshToken,
       );
+      await _local.saveUserId(user.id);
       await _local.cacheUser(user);
       return Right((user: user, accessToken: accessToken, refreshToken: refreshToken));
     } on AuthException catch (e) {
@@ -66,6 +67,7 @@ class AuthRepositoryImpl implements AuthRepository {
         accessToken: accessToken,
         refreshToken: refreshToken,
       );
+      await _local.saveUserId(user.id);
       await _local.cacheUser(user);
       return Right((user: user, accessToken: accessToken, refreshToken: refreshToken));
     } on AuthException catch (e) {
@@ -105,10 +107,13 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   FutureEither<void> logout() async {
+    // Fetch tokens before clearing so we can send refresh_token for revocation.
+    final refreshToken = await _local.getRefreshToken() ?? '';
+    final userId = await _local.getSavedUserId();
     try {
-      await _remote.logout();
+      await _remote.logout(refreshToken);
       await _local.clearTokens();
-      await _local.clearUser();
+      await _local.clearUser(userId);
       return const Right(null);
     } on AuthException catch (e) {
       return Left(AuthFailure(message: e.message, errorCode: e.errorCode));
@@ -117,7 +122,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } on NetworkException catch (e) {
       // Clear local state even if network fails — best-effort logout.
       await _local.clearTokens();
-      await _local.clearUser();
+      await _local.clearUser(userId);
       return Left(NetworkFailure(message: e.message));
     } catch (e) {
       return Left(ServerFailure(message: e.toString(), errorCode: 'UNKNOWN'));
@@ -127,7 +132,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   FutureEither<User?> getCurrentUser() async {
     try {
-      final user = await _local.getCachedUser();
+      final userId = await _local.getSavedUserId();
+      final user = await _local.getCachedUser(userId);
       return Right(user);
     } catch (e) {
       return Left(CacheFailure(message: e.toString()));

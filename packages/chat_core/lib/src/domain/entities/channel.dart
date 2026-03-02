@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 
+// Sentinel used to distinguish "not provided" from explicit null in copyWith.
+const _kUnset = Object();
+
 enum ChannelType { direct, group, public }
 
 class LastMessage extends Equatable {
@@ -79,11 +82,11 @@ class Channel extends Equatable {
     String? id,
     ChannelType? type,
     String? name,
-    String? description,
-    String? avatarUrl,
+    Object? description = _kUnset,
+    Object? avatarUrl = _kUnset,
     String? createdBy,
     int? memberCount,
-    LastMessage? lastMessage,
+    Object? lastMessage = _kUnset,
     int? unreadCount,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -92,11 +95,13 @@ class Channel extends Equatable {
       id: id ?? this.id,
       type: type ?? this.type,
       name: name ?? this.name,
-      description: description ?? this.description,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
+      description:
+          description == _kUnset ? this.description : description as String?,
+      avatarUrl: avatarUrl == _kUnset ? this.avatarUrl : avatarUrl as String?,
       createdBy: createdBy ?? this.createdBy,
       memberCount: memberCount ?? this.memberCount,
-      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessage:
+          lastMessage == _kUnset ? this.lastMessage : lastMessage as LastMessage?,
       unreadCount: unreadCount ?? this.unreadCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

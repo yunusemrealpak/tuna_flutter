@@ -9,6 +9,9 @@ import 'package:path_provider/path_provider.dart';
 import '../chat_sdk.dart';
 import '../data/datasources/local/secure_token_storage.dart';
 
+// Re-export for convenience in tests.
+export 'package:get_it/get_it.dart' show GetIt;
+
 final GetIt sl = GetIt.instance;
 
 /// Registers all dependencies in the correct order:
@@ -45,10 +48,21 @@ Future<void> registerDependencies(ChatConfig config) async {
   sl.registerSingleton<MessageRemoteDataSource>(
     MessageRemoteDataSourceImpl(sl<ApiClient>()),
   );
+  sl.registerSingleton<UserRemoteDataSource>(
+    UserRemoteDataSourceImpl(sl<ApiClient>()),
+  );
+  sl.registerSingleton<PresenceRemoteDataSource>(
+    PresenceRemoteDataSourceImpl(sl<ApiClient>()),
+  );
 
   // ── 6. Local data sources ────────────────────────────────────────────────
+  // AuthLocalDataSource uses UserDao to persist user data across app restarts
+  // (R-M3-004: user is now stored in Drift, not only in memory).
   sl.registerSingleton<AuthLocalDataSource>(
-    AuthLocalDataSourceImpl(sl<TokenStorage>()),
+    AuthLocalDataSourceImpl(
+      sl<TokenStorage>(),
+      sl<AppDatabase>().userDao,
+    ),
   );
 
   // ── 7. Repositories ──────────────────────────────────────────────────────
@@ -68,6 +82,15 @@ Future<void> registerDependencies(ChatConfig config) async {
     MessageRepositoryImpl(
       remoteDataSource: sl<MessageRemoteDataSource>(),
       database: sl<AppDatabase>(),
+    ),
+  );
+  sl.registerSingleton<UserRepository>(
+    UserRepositoryImpl(remoteDataSource: sl<UserRemoteDataSource>()),
+  );
+  sl.registerSingleton<PresenceRepository>(
+    PresenceRepositoryImpl(
+      remoteDataSource: sl<PresenceRemoteDataSource>(),
+      wsClient: sl<WsClient>(),
     ),
   );
 

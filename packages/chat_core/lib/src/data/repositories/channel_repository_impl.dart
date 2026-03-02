@@ -192,16 +192,22 @@ class ChannelRepositoryImpl implements ChannelRepository {
     int limit = 20,
   }) async {
     try {
-      // Return local channels immediately, then sync from remote.
-      final localRows = await _db.channelDao.findAll();
-      final localChannels = localRows.map(_channelFromRow).toList();
-
-      if (localChannels.isNotEmpty) {
-        unawaited(_syncChannelListFromRemote(cursor: cursor, limit: limit));
-        return Right((channels: localChannels, nextCursor: null));
+      // When paginating (cursor != null) always fetch from remote so that
+      // the server's cursor is respected and subsequent pages work correctly
+      // (R-M3-006). First-page requests (cursor == null) use offline-first:
+      // return local immediately and sync in background.
+      if (cursor == null) {
+        final localRows = await _db.channelDao.findAll();
+        final localChannels = localRows.map(_channelFromRow).toList();
+        if (localChannels.isNotEmpty) {
+          unawaited(_syncChannelListFromRemote(cursor: null, limit: limit));
+          // nextCursor is unknown from local data; return null to signal
+          // "use pull-to-refresh for fresh data with cursor".
+          return Right((channels: localChannels, nextCursor: null));
+        }
       }
 
-      // Cache is empty — fetch from remote.
+      // Cache empty or explicit pagination cursor: fetch from remote.
       final result = await _remote.listChannels(cursor: cursor, limit: limit);
       final channels = result.channels.map(_channelFromJson).toList();
       await _db.channelDao.upsertAll(channels.map(_channelToCompanion).toList());

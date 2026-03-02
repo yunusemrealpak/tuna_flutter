@@ -30,6 +30,8 @@ export 'src/data/datasources/remote/ws_client.dart';
 export 'src/data/datasources/remote/auth_remote_data_source.dart';
 export 'src/data/datasources/remote/channel_remote_data_source.dart';
 export 'src/data/datasources/remote/message_remote_data_source.dart';
+export 'src/data/datasources/remote/user_remote_data_source.dart';
+export 'src/data/datasources/remote/presence_remote_data_source.dart';
 
 // Data — Local (Drift)
 export 'src/data/datasources/local/app_database.dart';
@@ -49,6 +51,8 @@ export 'src/data/datasources/local/daos/pending_event_dao.dart';
 export 'src/data/repositories/auth_repository_impl.dart';
 export 'src/data/repositories/channel_repository_impl.dart';
 export 'src/data/repositories/message_repository_impl.dart';
+export 'src/data/repositories/user_repository_impl.dart';
+export 'src/data/repositories/presence_repository_impl.dart';
 
 // Data — Sync
 export 'src/data/sync/event_handler.dart';

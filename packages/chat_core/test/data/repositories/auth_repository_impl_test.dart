@@ -16,6 +16,7 @@ class _FakeRemote implements AuthRemoteDataSource {
   Exception? throwOnLogin;
   Exception? throwOnLogout;
   bool logoutCalled = false;
+  String? lastLogoutRefreshToken;
 
   @override
   Future<Map<String, dynamic>> register({
@@ -44,7 +45,8 @@ class _FakeRemote implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> logout() async {
+  Future<void> logout(String refreshToken) async {
+    lastLogoutRefreshToken = refreshToken;
     if (throwOnLogout != null) throw throwOnLogout!;
     logoutCalled = true;
   }
@@ -54,6 +56,7 @@ class _FakeLocal implements AuthLocalDataSource {
   User? _user;
   String? _accessToken;
   String? _refreshToken;
+  String? _userId;
 
   @override
   Future<void> saveTokens({
@@ -74,16 +77,24 @@ class _FakeLocal implements AuthLocalDataSource {
   Future<void> clearTokens() async {
     _accessToken = null;
     _refreshToken = null;
+    _userId = null;
   }
+
+  @override
+  Future<void> saveUserId(String userId) async => _userId = userId;
+
+  @override
+  Future<String?> getSavedUserId() async => _userId;
 
   @override
   Future<void> cacheUser(User user) async => _user = user;
 
   @override
-  Future<User?> getCachedUser() async => _user;
+  Future<User?> getCachedUser(String? userId) async =>
+      userId == null ? null : _user;
 
   @override
-  Future<void> clearUser() async => _user = null;
+  Future<void> clearUser(String? userId) async => _user = null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -150,7 +161,8 @@ void main() {
       );
       expect(await local.getAccessToken(), 'acc');
       expect(await local.getRefreshToken(), 'ref');
-      expect(await local.getCachedUser(), isNotNull);
+      expect(await local.getSavedUserId(), 'u1');
+      expect(await local.getCachedUser('u1'), isNotNull);
     });
 
     test('maps AuthException to AuthFailure', () async {
@@ -214,6 +226,12 @@ void main() {
       );
     });
 
+    test('saves userId after login', () async {
+      remote.loginResult = _authResponse();
+      await repo.login(email: 'alice@example.com', password: 'pass');
+      expect(await local.getSavedUserId(), 'u1');
+    });
+
     test('maps AuthException to AuthFailure', () async {
       remote.throwOnLogin = const AuthException(
         message: 'Invalid creds',
@@ -248,7 +266,8 @@ void main() {
   });
 
   group('logout', () {
-    test('calls remote logout and clears local state', () async {
+    test('sends refresh_token to remote and clears local state (R-M3-001)', () async {
+      local._userId = 'u1';
       local._user = User(
         id: 'u1',
         username: 'alice',
@@ -261,13 +280,16 @@ void main() {
       final result = await repo.logout();
       expect(result.isRight(), isTrue);
       expect(remote.logoutCalled, isTrue);
-      expect(await local.getCachedUser(), isNull);
+      // Verifies R-M3-001: refresh token is sent in the logout body.
+      expect(remote.lastLogoutRefreshToken, 'rt');
+      expect(await local.getCachedUser('u1'), isNull);
       expect(await local.getAccessToken(), isNull);
     });
 
     test('clears local state even on NetworkException', () async {
       remote.throwOnLogout = const NetworkException(message: 'offline');
       local._accessToken = 'at';
+      local._refreshToken = 'rt';
 
       final result = await repo.logout();
       // Returns Left (NetworkFailure) but local state is cleared
@@ -277,7 +299,8 @@ void main() {
   });
 
   group('getCurrentUser', () {
-    test('returns cached user when available', () async {
+    test('returns cached user when available (survives app restart via userId)', () async {
+      local._userId = 'u1';
       final user = User(
         id: 'u1',
         username: 'alice',
@@ -290,7 +313,7 @@ void main() {
       result.fold((l) => fail('expected Right'), (r) => expect(r, user));
     });
 
-    test('returns null when no user cached', () async {
+    test('returns null when no userId saved', () async {
       final result = await repo.getCurrentUser();
       expect(result.isRight(), isTrue);
       result.fold((l) => fail('expected Right'), (r) => expect(r, isNull));
