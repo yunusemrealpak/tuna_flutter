@@ -13,6 +13,9 @@ class Membership extends Equatable {
     this.lastReadMessageId,
     this.lastReadAt,
     required this.joinedAt,
+    this.username,
+    this.displayName,
+    this.avatarUrl,
   });
 
   final String userId;
@@ -22,9 +25,23 @@ class Membership extends Equatable {
   final DateTime? lastReadAt;
   final DateTime joinedAt;
 
+  /// Populated when loaded from the `/channels/:id/members` endpoint.
+  final String? username;
+  final String? displayName;
+  final String? avatarUrl;
+
   @override
-  List<Object?> get props =>
-      [userId, channelId, role, lastReadMessageId, lastReadAt, joinedAt];
+  List<Object?> get props => [
+        userId,
+        channelId,
+        role,
+        lastReadMessageId,
+        lastReadAt,
+        joinedAt,
+        username,
+        displayName,
+        avatarUrl,
+      ];
 
   Membership copyWith({
     String? userId,
@@ -33,6 +50,9 @@ class Membership extends Equatable {
     Object? lastReadMessageId = _kUnset,
     Object? lastReadAt = _kUnset,
     DateTime? joinedAt,
+    Object? username = _kUnset,
+    Object? displayName = _kUnset,
+    Object? avatarUrl = _kUnset,
   }) {
     return Membership(
       userId: userId ?? this.userId,
@@ -44,6 +64,10 @@ class Membership extends Equatable {
       lastReadAt:
           lastReadAt == _kUnset ? this.lastReadAt : lastReadAt as DateTime?,
       joinedAt: joinedAt ?? this.joinedAt,
+      username: username == _kUnset ? this.username : username as String?,
+      displayName:
+          displayName == _kUnset ? this.displayName : displayName as String?,
+      avatarUrl: avatarUrl == _kUnset ? this.avatarUrl : avatarUrl as String?,
     );
   }
 
@@ -63,6 +87,7 @@ class Membership extends Equatable {
     }
   }
 
+  /// Parses a membership from the standard membership JSON (includes channel_id).
   factory Membership.fromJson(Map<String, dynamic> json) => Membership(
         userId: json['user_id'] as String,
         channelId: json['channel_id'] as String,
@@ -72,6 +97,22 @@ class Membership extends Equatable {
             ? DateTime.parse(json['last_read_at'] as String)
             : null,
         joinedAt: DateTime.parse(json['joined_at'] as String),
+      );
+
+  /// Parses a membership from the `GET /channels/:id/members` response, where
+  /// `channel_id` is not present per item but user display fields are included.
+  factory Membership.fromMembersJson(
+    Map<String, dynamic> json, {
+    required String channelId,
+  }) =>
+      Membership(
+        userId: json['user_id'] as String,
+        channelId: channelId,
+        role: _roleFromString((json['role'] as String?) ?? 'member'),
+        joinedAt: DateTime.parse(json['joined_at'] as String),
+        username: json['username'] as String?,
+        displayName: json['display_name'] as String?,
+        avatarUrl: json['avatar_url'] as String?,
       );
 
   Map<String, dynamic> toJson() => {

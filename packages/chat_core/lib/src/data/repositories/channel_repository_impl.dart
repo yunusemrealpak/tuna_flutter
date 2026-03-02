@@ -335,38 +335,34 @@ class ChannelRepositoryImpl implements ChannelRepository {
   @override
   FutureEither<List<Membership>> getMembers(String channelId) async {
     try {
-      // Check local cache first.
-      final localRows = await _db.membershipDao.findByChannel(channelId);
-      if (localRows.isNotEmpty) {
-        unawaited(_syncMembersFromRemote(channelId));
-        return Right(localRows.map(_membershipFromRow).toList());
-      }
-
-      // Fetch from remote.
+      // Fetch from remote — always fresh to get user display fields.
+      // Local-cache rows don't carry username/displayName/avatarUrl (schema
+      // limitation), so we prefer remote data here.
       final data = await _remote.getMembers(channelId);
-      final memberships = data.map(_membershipFromJson).toList();
+      final memberships = data
+          .map((json) => Membership.fromMembersJson(json, channelId: channelId))
+          .toList();
+      // Persist core membership fields to local cache.
       await _db.membershipDao
           .upsertAll(memberships.map(_membershipToCompanion).toList());
       return Right(memberships);
+    } on NetworkException catch (_) {
+      // Fall back to local cache on network error (no user display fields).
+      try {
+        final localRows = await _db.membershipDao.findByChannel(channelId);
+        if (localRows.isNotEmpty) {
+          return Right(localRows.map(_membershipFromRow).toList());
+        }
+        rethrow;
+      } catch (e) {
+        return Left(NetworkFailure(message: e.toString()));
+      }
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, errorCode: e.errorCode));
-    } on NetworkException catch (e) {
-      return Left(NetworkFailure(message: e.message));
     } on AuthException catch (e) {
       return Left(AuthFailure(message: e.message, errorCode: e.errorCode));
     } catch (e) {
       return Left(ServerFailure(message: e.toString(), errorCode: 'UNKNOWN'));
-    }
-  }
-
-  Future<void> _syncMembersFromRemote(String channelId) async {
-    try {
-      final data = await _remote.getMembers(channelId);
-      final memberships = data.map(_membershipFromJson).toList();
-      await _db.membershipDao
-          .upsertAll(memberships.map(_membershipToCompanion).toList());
-    } catch (_) {
-      // Ignore background sync errors.
     }
   }
 }
