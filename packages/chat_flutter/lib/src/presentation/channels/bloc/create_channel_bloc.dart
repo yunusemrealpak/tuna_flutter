@@ -7,11 +7,20 @@ part 'create_channel_event.dart';
 part 'create_channel_state.dart';
 
 class CreateChannelBloc extends Bloc<CreateChannelEvent, CreateChannelState> {
-  CreateChannelBloc() : super(const CreateChannelState()) {
+  /// Creates a [CreateChannelBloc] using the global service locator.
+  CreateChannelBloc() : this.withServiceLocator(sl);
+
+  /// Creates a [CreateChannelBloc] with a custom [GetIt] instance.
+  /// Useful for testing.
+  CreateChannelBloc.withServiceLocator(GetIt serviceLocator)
+      : _sl = serviceLocator,
+        super(const CreateChannelState()) {
     on<CreateChannelSearchUsers>(_onSearchUsers);
     on<CreateChannelToggleMember>(_onToggleMember);
     on<CreateChannelSubmitted>(_onSubmit);
   }
+
+  final GetIt _sl;
 
   Future<void> _onSearchUsers(
     CreateChannelSearchUsers event,
@@ -23,7 +32,8 @@ class CreateChannelBloc extends Bloc<CreateChannelEvent, CreateChannelState> {
     }
 
     emit(state.copyWith(isSearching: true, clearError: true));
-    final result = await sl<UserRepository>().searchUsers(event.query.trim());
+    final result =
+        await _sl<UserRepository>().searchUsers(event.query.trim());
     result.fold(
       (failure) => emit(state.copyWith(
         isSearching: false,
@@ -58,7 +68,7 @@ class CreateChannelBloc extends Bloc<CreateChannelEvent, CreateChannelState> {
 
     final memberIds = state.selectedMembers.map((u) => u.id).toList();
 
-    final result = await sl<ChannelRepository>().createChannel(
+    final result = await _sl<ChannelRepository>().createChannel(
       type: event.type,
       name: event.name,
       description: event.description,

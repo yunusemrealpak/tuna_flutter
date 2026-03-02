@@ -9,25 +9,35 @@ part 'typing_event.dart';
 part 'typing_state.dart';
 
 class TypingBloc extends Bloc<TypingEvent, TypingState> {
-  TypingBloc({required this.channelId}) : super(const TypingState()) {
+  /// Creates a [TypingBloc] using the global service locator.
+  TypingBloc({required String channelId})
+      : this.withDependencies(channelId: channelId, wsClient: sl<WsClient>());
+
+  /// Creates a [TypingBloc] with an explicit [WsClient]. Useful for testing.
+  TypingBloc.withDependencies({
+    required this.channelId,
+    required WsClient wsClient,
+  })  : _wsClient = wsClient,
+        super(const TypingState()) {
     on<TypingStarted>(_onTypingStarted);
     on<TypingStopped>(_onTypingStopped);
     on<TypingUsersUpdated>(_onTypingUsersUpdated);
   }
 
   final String channelId;
+  final WsClient _wsClient;
   Timer? _debounceTimer;
 
   Future<void> _onTypingStarted(
     TypingStarted event,
     Emitter<TypingState> emit,
   ) async {
-    sl<WsClient>().send({
+    _wsClient.send({
       'type': WsEventType.typingStart,
       'channel_id': event.channelId,
     });
 
-    // Reset debounce — auto-stop after 3 seconds of no activity
+    // Reset debounce — auto-stop after 3 seconds of no activity.
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(seconds: 3), () {
       add(TypingStopped(event.channelId));
@@ -40,7 +50,7 @@ class TypingBloc extends Bloc<TypingEvent, TypingState> {
   ) async {
     _debounceTimer?.cancel();
     _debounceTimer = null;
-    sl<WsClient>().send({
+    _wsClient.send({
       'type': WsEventType.typingStop,
       'channel_id': event.channelId,
     });
@@ -50,15 +60,17 @@ class TypingBloc extends Bloc<TypingEvent, TypingState> {
     TypingUsersUpdated event,
     Emitter<TypingState> emit,
   ) async {
-    final current = List<String>.from(state.typingUsernames);
+    final current = Map<String, String>.from(state.typingUsers);
     if (event.isTyping) {
-      if (!current.contains(event.username)) {
-        current.add(event.username);
+      // Only add if we have a username to display.
+      if (event.username != null) {
+        current[event.userId] = event.username!;
       }
     } else {
-      current.remove(event.username);
+      // Remove by userId — no username needed for removal.
+      current.remove(event.userId);
     }
-    emit(state.copyWith(typingUsernames: current));
+    emit(state.copyWith(typingUsers: current));
   }
 
   @override

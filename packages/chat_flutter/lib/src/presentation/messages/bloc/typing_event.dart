@@ -15,13 +15,14 @@ class TypingStopped extends TypingEvent {
 class TypingUsersUpdated extends TypingEvent {
   final String channelId;
   final String userId;
-  final String username;
+  // username is present in typing_start events but absent in typing_stop.
+  final String? username;
   final bool isTyping;
 
   TypingUsersUpdated({
     required this.channelId,
     required this.userId,
-    required this.username,
+    this.username,
     required this.isTyping,
   });
 }

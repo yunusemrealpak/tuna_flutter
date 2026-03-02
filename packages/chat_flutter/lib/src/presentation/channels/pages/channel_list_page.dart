@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../auth/bloc/auth_bloc.dart';
 import '../bloc/channel_list_bloc.dart';
 import '../widgets/channel_list_tile.dart';
 import 'create_channel_page.dart';
@@ -37,9 +40,15 @@ class _ChannelListPageState extends State<ChannelListPage> {
   }
 
   Future<void> _onRefresh() async {
+    final completer = Completer<void>();
+    final subscription = context.read<ChannelListBloc>().stream.listen((state) {
+      if (state is ChannelListLoaded || state is ChannelListError) {
+        if (!completer.isCompleted) completer.complete();
+      }
+    });
     context.read<ChannelListBloc>().add(ChannelListRefreshRequested());
-    // Wait for state change
-    await Future.delayed(const Duration(milliseconds: 500));
+    await completer.future;
+    await subscription.cancel();
   }
 
   @override
@@ -47,14 +56,6 @@ class _ChannelListPageState extends State<ChannelListPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Channels'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Search could be implemented here
-            },
-          ),
-        ],
       ),
       body: BlocBuilder<ChannelListBloc, ChannelListState>(
         builder: (context, state) {
@@ -139,11 +140,16 @@ class _ChannelListPageState extends State<ChannelListPage> {
                   return ChannelListTile(
                     channel: channel,
                     onTap: () {
+                      // R-M4-003: pass currentUserId so own messages render on the right.
+                      final authState = context.read<AuthBloc>().state;
+                      final currentUserId =
+                          authState is Authenticated ? authState.user.id : null;
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => MessageListPage(
                             channelId: channel.id,
                             channelName: channel.name,
+                            currentUserId: currentUserId,
                           ),
                         ),
                       );

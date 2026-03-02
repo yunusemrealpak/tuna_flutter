@@ -73,7 +73,8 @@ class _MessageListPageState extends State<MessageListPage> {
             _messageBloc.add(MessageListMessageUpdated(message));
           } catch (_) {}
         case WsEventType.messageDeleted:
-          final messageId = event.data['message_id'] as String?;
+          // R-M4-001: backend emits {id, channel_id} — not message_id.
+          final messageId = event.data['id'] as String?;
           if (messageId != null) {
             _messageBloc.add(MessageListMessageDeleted(messageId));
           }
@@ -89,13 +90,12 @@ class _MessageListPageState extends State<MessageListPage> {
             ));
           }
         case WsEventType.userTypingStop:
+          // R-M4-002: typing_stop payload is {channel_id, user_id} — no username.
           final userId = event.data['user_id'] as String?;
-          final username = event.data['username'] as String?;
-          if (userId != null && username != null) {
+          if (userId != null) {
             _typingBloc.add(TypingUsersUpdated(
               channelId: widget.channelId,
               userId: userId,
-              username: username,
               isTyping: false,
             ));
           }

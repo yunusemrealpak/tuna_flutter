@@ -1,10 +1,13 @@
 part of 'typing_bloc.dart';
 
 class TypingState {
-  final List<String> typingUsernames;
+  // userId → username mapping; enables removal by userId even without username.
+  final Map<String, String> typingUsers;
 
-  const TypingState({this.typingUsernames = const []});
+  const TypingState({this.typingUsers = const {}});
 
-  TypingState copyWith({List<String>? typingUsernames}) =>
-      TypingState(typingUsernames: typingUsernames ?? this.typingUsernames);
+  List<String> get typingUsernames => typingUsers.values.toList();
+
+  TypingState copyWith({Map<String, String>? typingUsers}) =>
+      TypingState(typingUsers: typingUsers ?? this.typingUsers);
 }

@@ -1,10 +1,11 @@
 import 'package:chat_core/chat_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../di/injection.dart';
-import '../../shared/widgets/user_avatar.dart';
+import '../bloc/channel_detail_cubit.dart';
 
-class ChannelDetailPage extends StatefulWidget {
+class ChannelDetailPage extends StatelessWidget {
   const ChannelDetailPage({
     super.key,
     required this.channel,
@@ -15,98 +16,109 @@ class ChannelDetailPage extends StatefulWidget {
   final String? currentUserId;
 
   @override
-  State<ChannelDetailPage> createState() => _ChannelDetailPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => ChannelDetailCubit()
+        ..load(channel.id, currentUserId: currentUserId),
+      child: _ChannelDetailView(channel: channel),
+    );
+  }
 }
 
-class _ChannelDetailPageState extends State<ChannelDetailPage> {
-  List<Membership> _members = [];
-  Map<String, User> _userMap = {};
-  bool _isLoading = true;
-  String? _error;
-  MemberRole? _currentUserRole;
+class _ChannelDetailView extends StatelessWidget {
+  const _ChannelDetailView({required this.channel});
+
+  final Channel channel;
+
+  Future<void> _showAddMemberDialog(
+    BuildContext context,
+    ChannelDetailCubit cubit,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _AddMemberDialog(
+        onAdd: (user) => cubit.addMember(channel.id, userId: user.id),
+      ),
+    );
+  }
 
   @override
-  void initState() {
-    super.initState();
-    _loadMembers();
-  }
-
-  Future<void> _loadMembers() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    final result =
-        await sl<ChannelRepository>().getMembers(widget.channel.id);
-    result.fold(
-      (failure) {
-        if (mounted) {
-          setState(() {
-            _error = failure.message;
-            _isLoading = false;
-          });
+  Widget build(BuildContext context) {
+    return BlocConsumer<ChannelDetailCubit, ChannelDetailState>(
+      listener: (context, state) {
+        if (state is ChannelDetailDeleted) {
+          // Pop detail + message list pages.
+          Navigator.of(context)
+            ..pop()
+            ..pop();
+        } else if (state is ChannelDetailError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+          // Reload to recover from transient errors.
+          context.read<ChannelDetailCubit>().load(
+                channel.id,
+                currentUserId: (context.read<ChannelDetailCubit>().state
+                        is ChannelDetailLoaded)
+                    ? (context.read<ChannelDetailCubit>().state
+                            as ChannelDetailLoaded)
+                        .currentUserId
+                    : null,
+              );
         }
       },
-      (members) async {
-        // Determine current user's role
-        MemberRole? role;
-        if (widget.currentUserId != null) {
-          final membership = members.where(
-            (m) => m.userId == widget.currentUserId,
-          );
-          if (membership.isNotEmpty) {
-            role = membership.first.role;
-          }
-        }
+      builder: (context, state) {
+        final cubit = context.read<ChannelDetailCubit>();
 
-        // Load user details for each member
-        final userMap = <String, User>{};
-        for (final member in members) {
-          final userResult =
-              await sl<UserRepository>().getUser(member.userId);
-          userResult.fold(
-            (_) {},
-            (user) => userMap[user.id] = user,
-          );
-        }
-
-        if (mounted) {
-          setState(() {
-            _members = members;
-            _userMap = userMap;
-            _currentUserRole = role;
-            _isLoading = false;
-          });
-        }
-      },
-    );
-  }
-
-  bool get _isOwner => _currentUserRole == MemberRole.owner;
-  bool get _isAdmin =>
-      _currentUserRole == MemberRole.admin ||
-      _currentUserRole == MemberRole.owner;
-
-  Future<void> _removeMember(String userId) async {
-    final result = await sl<ChannelRepository>().removeMember(
-      widget.channel.id,
-      userId,
-    );
-    result.fold(
-      (failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(failure.message),
-            backgroundColor: Colors.red,
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(channel.name),
+            actions: [
+              if (state is ChannelDetailLoaded && state.isOwner)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Delete Channel',
+                  onPressed: () => _confirmDelete(context, cubit),
+                ),
+            ],
           ),
+          body: switch (state) {
+            ChannelDetailLoading() =>
+              const Center(child: CircularProgressIndicator()),
+            ChannelDetailError() => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(state.message),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => cubit.load(channel.id),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ChannelDetailLoaded() => _MemberList(
+                channel: channel,
+                state: state,
+                cubit: cubit,
+                onAddMember: () =>
+                    _showAddMemberDialog(context, cubit),
+              ),
+            _ => const SizedBox.shrink(),
+          },
         );
       },
-      (_) => _loadMembers(),
     );
   }
 
-  Future<void> _deleteChannel() async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    ChannelDetailCubit cubit,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -127,144 +139,97 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
         ],
       ),
     );
-
-    if (confirm != true) return;
-
-    final result =
-        await sl<ChannelRepository>().deleteChannel(widget.channel.id);
-    result.fold(
-      (failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(failure.message),
-            backgroundColor: Colors.red,
-          ),
-        );
-      },
-      (_) {
-        // Pop back to channel list
-        Navigator.of(context)
-          ..pop() // pop detail
-          ..pop(); // pop message list
-      },
-    );
+    if (confirm == true) {
+      cubit.deleteChannel(channel.id);
+    }
   }
+}
+
+class _MemberList extends StatelessWidget {
+  const _MemberList({
+    required this.channel,
+    required this.state,
+    required this.cubit,
+    required this.onAddMember,
+  });
+
+  final Channel channel;
+  final ChannelDetailLoaded state;
+  final ChannelDetailCubit cubit;
+  final VoidCallback onAddMember;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.channel.name),
-        actions: [
-          if (_isOwner)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: 'Delete Channel',
-              onPressed: _deleteChannel,
-            ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(_error!),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadMembers,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView(
-                  children: [
-                    // Channel info section
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (widget.channel.description != null) ...[
-                            Text(
-                              widget.channel.description!,
-                              style:
-                                  Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          Text(
-                            '${widget.channel.memberCount} members',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(),
-
-                    // Members header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Members',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const Spacer(),
-                          if (_isAdmin)
-                            TextButton.icon(
-                              icon: const Icon(Icons.person_add),
-                              label: const Text('Add'),
-                              onPressed: () {
-                                // Add member flow could be implemented here
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    // Members list
-                    ..._members.map((membership) {
-                      final user = _userMap[membership.userId];
-                      final isCurrentUser =
-                          membership.userId == widget.currentUserId;
-                      return ListTile(
-                        leading: user != null
-                            ? UserAvatar(
-                                user: user,
-                                size: 40,
-                                showPresence: false,
-                              )
-                            : const CircleAvatar(
-                                child: Icon(Icons.person),
-                              ),
-                        title: Text(
-                          user?.displayName ?? membership.userId,
-                        ),
-                        subtitle: Text(_roleLabel(membership.role)),
-                        trailing: _isAdmin &&
-                                !isCurrentUser &&
-                                membership.role != MemberRole.owner
-                            ? IconButton(
-                                icon: const Icon(Icons.remove_circle_outline),
-                                color: Colors.red,
-                                tooltip: 'Remove member',
-                                onPressed: () =>
-                                    _removeMember(membership.userId),
-                              )
-                            : null,
-                      );
-                    }),
-                  ],
+    return ListView(
+      children: [
+        // Channel info section
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (channel.description != null) ...[
+                Text(
+                  channel.description!,
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
+                const SizedBox(height: 8),
+              ],
+              Text(
+                '${channel.memberCount} members',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        const Divider(),
+
+        // Members header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Text(
+                'Members',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              if (state.isAdmin)
+                TextButton.icon(
+                  icon: const Icon(Icons.person_add),
+                  label: const Text('Add'),
+                  onPressed: onAddMember,
+                ),
+            ],
+          ),
+        ),
+
+        // Members list — uses fields returned by /channels/:id/members (R-M4-004).
+        ...state.members.map((membership) {
+          final isCurrentUser = membership.userId == state.currentUserId;
+          final displayLabel =
+              membership.displayName ?? membership.username ?? membership.userId;
+          return ListTile(
+            leading: _MemberAvatar(membership: membership),
+            title: Text(displayLabel),
+            subtitle: Text(_roleLabel(membership.role)),
+            trailing: state.isAdmin &&
+                    !isCurrentUser &&
+                    membership.role != MemberRole.owner
+                ? IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    color: Colors.red,
+                    tooltip: 'Remove member',
+                    onPressed: () =>
+                        cubit.removeMember(channel.id, membership.userId),
+                  )
+                : null,
+          );
+        }),
+      ],
     );
   }
 
@@ -277,5 +242,136 @@ class _ChannelDetailPageState extends State<ChannelDetailPage> {
       case MemberRole.member:
         return 'Member';
     }
+  }
+}
+
+class _MemberAvatar extends StatelessWidget {
+  const _MemberAvatar({required this.membership});
+
+  final Membership membership;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = (membership.displayName ?? membership.username ?? '?')
+        .substring(0, 1)
+        .toUpperCase();
+    if (membership.avatarUrl != null) {
+      return CircleAvatar(
+        backgroundImage: NetworkImage(membership.avatarUrl!),
+        onBackgroundImageError: (e, stackTrace) {},
+      );
+    }
+    return CircleAvatar(child: Text(initial));
+  }
+}
+
+/// A dialog that searches for users and lets the caller add one to a channel.
+class _AddMemberDialog extends StatefulWidget {
+  const _AddMemberDialog({required this.onAdd});
+
+  final Future<void> Function(User user) onAdd;
+
+  @override
+  State<_AddMemberDialog> createState() => _AddMemberDialogState();
+}
+
+class _AddMemberDialogState extends State<_AddMemberDialog> {
+  final _controller = TextEditingController();
+  List<User> _results = [];
+  bool _isSearching = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search(String query) async {
+    if (query.trim().length < 2) {
+      setState(() {
+        _results = [];
+        _error = null;
+      });
+      return;
+    }
+    setState(() {
+      _isSearching = true;
+      _error = null;
+    });
+    final result = await sl<UserRepository>().searchUsers(query.trim());
+    if (!mounted) return;
+    result.fold(
+      (failure) => setState(() {
+        _isSearching = false;
+        _error = failure.message;
+      }),
+      (users) => setState(() {
+        _isSearching = false;
+        _results = users;
+      }),
+    );
+  }
+
+  Future<void> _select(User user) async {
+    await widget.onAdd(user);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Member'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                labelText: 'Search users',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: _search,
+            ),
+            const SizedBox(height: 8),
+            if (_isSearching)
+              const CircularProgressIndicator()
+            else if (_error != null)
+              Text(_error!, style: const TextStyle(color: Colors.red))
+            else if (_results.isEmpty && _controller.text.length >= 2)
+              const Text('No users found')
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _results.length,
+                  itemBuilder: (_, i) {
+                    final user = _results[i];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        child: Text(
+                          user.displayName.substring(0, 1).toUpperCase(),
+                        ),
+                      ),
+                      title: Text(user.displayName),
+                      subtitle: Text('@${user.username}'),
+                      onTap: () => _select(user),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
   }
 }
