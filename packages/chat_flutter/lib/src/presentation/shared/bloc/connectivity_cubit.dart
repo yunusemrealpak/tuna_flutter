@@ -9,22 +9,34 @@ import '../../../di/injection.dart';
 part 'connectivity_state.dart';
 
 class ConnectivityCubit extends Cubit<ConnectivityState> {
+  /// Creates a [ConnectivityCubit] using the global service locator.
   ConnectivityCubit()
-      : super(const ConnectivityState(isOnline: true)) {
+      : this.withDependencies(
+          syncEngine: sl<SyncEngine>(),
+          connectivity: Connectivity(),
+        );
+
+  /// Creates a [ConnectivityCubit] with explicit dependencies. Useful for testing.
+  ConnectivityCubit.withDependencies({
+    required SyncEngine syncEngine,
+    required Connectivity connectivity,
+  })  : _syncEngine = syncEngine,
+        _connectivity = connectivity,
+        super(const ConnectivityState(isOnline: true)) {
     _init();
   }
 
+  final SyncEngine _syncEngine;
+  final Connectivity _connectivity;
   StreamSubscription<List<ConnectivityResult>>? _subscription;
 
   Future<void> _init() async {
     // Check initial connectivity
-    final results = await Connectivity().checkConnectivity();
+    final results = await _connectivity.checkConnectivity();
     _handleResults(results);
 
     // Listen for changes
-    _subscription = Connectivity().onConnectivityChanged.listen(
-      _handleResults,
-    );
+    _subscription = _connectivity.onConnectivityChanged.listen(_handleResults);
   }
 
   void _handleResults(List<ConnectivityResult> results) {
@@ -36,7 +48,7 @@ class ConnectivityCubit extends Cubit<ConnectivityState> {
 
     // If coming back online, trigger sync
     if (isOnline && wasOffline) {
-      sl<SyncEngine>().start();
+      _syncEngine.start();
     }
   }
 
