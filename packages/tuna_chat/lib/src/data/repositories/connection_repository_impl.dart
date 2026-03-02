@@ -38,7 +38,7 @@ class ConnectionRepositoryImpl implements ConnectionRepository {
 
       // Fetch current user profile to verify the token is valid.
       final data = await _userRemoteDataSource.getMe();
-      final user = User.fromJson(data['user'] as Map<String, dynamic>? ?? data);
+      final user = User.fromJson(data);
       _currentUser = user;
 
       // Establish WebSocket connection.

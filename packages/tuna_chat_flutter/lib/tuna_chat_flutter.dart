@@ -8,9 +8,6 @@ export 'package:tuna_chat/tuna_chat.dart';
 // SDK initialization
 export 'src/tuna_chat_sdk.dart';
 
-// DI
-export 'src/di/injection.dart';
-
 // ── Presentation — Connection ─────────────────────────────────────────────
 export 'src/presentation/connection/bloc/connection_bloc.dart';
 export 'src/presentation/connection/pages/connect_page.dart';

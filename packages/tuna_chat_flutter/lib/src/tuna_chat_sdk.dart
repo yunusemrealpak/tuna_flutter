@@ -8,19 +8,34 @@ import 'di/injection.dart';
 class TunaChatConfig {
   const TunaChatConfig({
     required this.apiKey,
-    this.region = 'us',
     this.baseUrl,
     this.wsUrl,
+    this.tokenProvider,
   });
 
   final String apiKey;
-  final String region;
 
-  /// Override the REST base URL. Defaults to the regional endpoint.
+  /// Override the REST base URL (e.g. `http://your-tunachat-host/api/v1`).
+  /// Defaults to `http://localhost:8080/api/v1`.
   final String? baseUrl;
 
-  /// Override the WebSocket URL. Defaults to the regional endpoint.
+  /// Override the WebSocket URL (e.g. `ws://your-tunachat-host/api/v1/ws`).
+  /// Defaults to `ws://localhost:8080/api/v1/ws`.
   final String? wsUrl;
+
+  /// Optional callback that returns a fresh JWT when the current one expires.
+  ///
+  /// Used by [ApiClient] on HTTP 401 and by [WsClient] before each reconnect
+  /// attempt. Should return a new token or null to trigger disconnection.
+  ///
+  /// Example (Stream Chat pattern):
+  /// ```dart
+  /// TunaChatConfig(
+  ///   apiKey: 'tuna_key_xxx',
+  ///   tokenProvider: () async => await myServer.fetchChatToken(userId),
+  /// )
+  /// ```
+  final Future<String?> Function()? tokenProvider;
 
   String get resolvedBaseUrl =>
       baseUrl ?? 'http://localhost:8080/api/v1';

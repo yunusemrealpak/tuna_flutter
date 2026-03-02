@@ -6,7 +6,14 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize TunaChat SDK with your app's API key.
-  // Replace these values with real credentials from your TunaChat dashboard.
+  // Replace the apiKey with real credentials from your TunaChat dashboard.
+  //
+  // URL configuration — choose the value that matches your run target:
+  //   Android emulator → 'http://10.0.2.2:8080/api/v1'  (current)
+  //   iOS simulator    → 'http://127.0.0.1:8080/api/v1'
+  //   macOS / Linux    → 'http://localhost:8080/api/v1'
+  //   Physical device  → 'http://<your-machine-local-ip>:8080/api/v1'
+  // For production, supply the real server URL via baseUrl / wsUrl.
   await TunaChatSDK.init(
     config: const TunaChatConfig(
       apiKey: 'tuna_key_your_api_key_here',

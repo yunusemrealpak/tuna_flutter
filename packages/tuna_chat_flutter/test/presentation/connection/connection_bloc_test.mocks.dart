@@ -42,6 +42,14 @@ class MockConnectionRepository extends _i1.Mock
   }
 
   @override
+  _i6.User? get currentUser =>
+      (super.noSuchMethod(
+            Invocation.getter(#currentUser),
+            returnValueForMissingStub: null,
+          )
+          as _i6.User?);
+
+  @override
   _i4.Future<_i2.Either<_i5.Failure, _i6.User>> connectUser({
     required String? userId,
     required String? token,
