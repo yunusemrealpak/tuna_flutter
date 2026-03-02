@@ -78,6 +78,19 @@ class _FakeRemote implements ChannelRemoteDataSource {
   Future<List<Map<String, dynamic>>> getMembers(String channelId) async {
     return [];
   }
+
+  @override
+  Future<Map<String, dynamic>> markAsRead(
+    String channelId,
+    String messageId,
+  ) async {
+    return {
+      'channel_id': channelId,
+      'user_id': 'u1',
+      'last_read_message_id': messageId,
+      'last_read_at': '2024-01-01T00:00:00.000Z',
+    };
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

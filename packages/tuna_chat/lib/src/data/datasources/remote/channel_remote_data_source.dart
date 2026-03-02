@@ -34,6 +34,8 @@ abstract class ChannelRemoteDataSource {
   Future<void> removeMember(String channelId, String userId);
 
   Future<List<Map<String, dynamic>>> getMembers(String channelId);
+
+  Future<Map<String, dynamic>> markAsRead(String channelId, String messageId);
 }
 
 class ChannelRemoteDataSourceImpl implements ChannelRemoteDataSource {
@@ -163,5 +165,25 @@ class ChannelRemoteDataSourceImpl implements ChannelRemoteDataSource {
             .toList() ??
         [];
     return items;
+  }
+
+  @override
+  Future<Map<String, dynamic>> markAsRead(
+    String channelId,
+    String messageId,
+  ) async {
+    final response = await _client.post(
+      '/channels/$channelId/read',
+      body: {'message_id': messageId},
+    );
+    final data = response.data;
+    if (data == null) {
+      throw const ServerException(
+        message: 'Empty response from markAsRead.',
+        statusCode: 200,
+        errorCode: 'EMPTY_RESPONSE',
+      );
+    }
+    return data;
   }
 }

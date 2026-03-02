@@ -295,4 +295,20 @@ class MockChannelRepository extends _i1.Mock implements _i7.ChannelRepository {
                 ),
           )
           as _i4.Future<_i2.Either<_i5.Failure, List<_i9.Membership>>>);
+
+  @override
+  _i4.Future<_i2.Either<_i5.Failure, void>> markAsRead(
+    String? channelId,
+    String? messageId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#markAsRead, [channelId, messageId]),
+            returnValue: _i4.Future<_i2.Either<_i5.Failure, void>>.value(
+              _FakeEither_0<_i5.Failure, void>(
+                this,
+                Invocation.method(#markAsRead, [channelId, messageId]),
+              ),
+            ),
+          )
+          as _i4.Future<_i2.Either<_i5.Failure, void>>);
 }

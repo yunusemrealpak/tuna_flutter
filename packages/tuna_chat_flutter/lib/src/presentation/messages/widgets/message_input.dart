@@ -7,12 +7,14 @@ class MessageInput extends StatefulWidget {
     required this.onSend,
     this.isSending = false,
     this.onTypingChanged,
+    this.hintText = 'Message...',
   });
 
   final String channelId;
   final void Function(String text) onSend;
   final bool isSending;
   final void Function(bool isTyping)? onTypingChanged;
+  final String hintText;
 
   @override
   State<MessageInput> createState() => _MessageInputState();
@@ -75,8 +77,8 @@ class _MessageInputState extends State<MessageInput> {
                 maxLines: 5,
                 keyboardType: TextInputType.multiline,
                 textInputAction: TextInputAction.newline,
-                decoration: const InputDecoration(
-                  hintText: 'Message...',
+                decoration: InputDecoration(
+                  hintText: widget.hintText,
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 12,

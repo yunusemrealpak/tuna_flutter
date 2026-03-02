@@ -15,6 +15,10 @@ enum WsConnectionState {
   reconnecting,
 }
 
+/// Factory function that creates a [WebSocketChannel] from a URI.
+/// Inject a custom factory in tests to avoid real network connections.
+typedef WsChannelFactory = WebSocketChannel Function(Uri);
+
 /// WebSocket client for TunaChat SDK.
 ///
 /// Features:
@@ -23,16 +27,20 @@ enum WsConnectionState {
 /// - Broadcasts incoming [ChatEvent]s as a stream.
 /// - Exposes a [connectionState] stream.
 /// - Auto-reconnects with exponential backoff on unexpected disconnect.
+/// - Before each reconnect attempt, calls [tokenProvider] (if set) to obtain
+///   a fresh JWT, preventing silent disconnects on token expiry.
 /// - Sends a periodic heartbeat ping to keep the connection alive.
 /// - On reconnect, sends `connection.resume` with the last received event
 ///   timestamp so the server can deliver missed events.
 class WsClient {
   WsClient({
     required this.wsUrl,
+    this.tokenProvider,
     Duration? heartbeatInterval,
     Duration? reconnectInitialDelay,
     Duration? reconnectMaxDelay,
     int? maxReconnectAttempts,
+    WsChannelFactory? channelFactory,
   })  : heartbeatInterval =
             heartbeatInterval ?? ApiConstants.wsHeartbeatInterval,
         reconnectInitialDelay =
@@ -40,13 +48,22 @@ class WsClient {
         reconnectMaxDelay =
             reconnectMaxDelay ?? ApiConstants.wsReconnectMaxDelay,
         maxReconnectAttempts =
-            maxReconnectAttempts ?? ApiConstants.wsReconnectMaxAttempts;
+            maxReconnectAttempts ?? ApiConstants.wsReconnectMaxAttempts,
+        _channelFactory = channelFactory ?? WebSocketChannel.connect;
 
   final String wsUrl;
+
+  /// Optional callback that returns a fresh JWT before each reconnect attempt.
+  ///
+  /// Mirrors the [ApiClient.tokenProvider] pattern. If null, the cached token
+  /// is reused — reconnects will fail silently once the JWT expires.
+  final Future<String?> Function()? tokenProvider;
+
   final Duration heartbeatInterval;
   final Duration reconnectInitialDelay;
   final Duration reconnectMaxDelay;
   final int maxReconnectAttempts;
+  final WsChannelFactory _channelFactory;
 
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _subscription;
@@ -106,7 +123,7 @@ class WsClient {
       var urlStr = '$wsUrl?token=$_token';
       if (_apiKey != null) urlStr += '&api_key=$_apiKey';
       final uri = Uri.parse(urlStr);
-      _channel = WebSocketChannel.connect(uri);
+      _channel = _channelFactory(uri);
       await _channel!.ready;
 
       _reconnectAttempts = 0;
@@ -167,7 +184,23 @@ class WsClient {
 
     final delay = _nextDelay();
     _reconnectAttempts++;
-    _reconnectTimer = Timer(delay, _connect);
+    _reconnectTimer = Timer(delay, () => _reconnectWithTokenRefresh());
+  }
+
+  /// Refreshes the JWT via [tokenProvider] (if set) before reconnecting.
+  ///
+  /// If [tokenProvider] is null or throws, the cached [_token] is reused.
+  Future<void> _reconnectWithTokenRefresh() async {
+    if (_disposed) return;
+    if (tokenProvider != null) {
+      try {
+        final newToken = await tokenProvider!();
+        if (newToken != null) _token = newToken;
+      } catch (_) {
+        // Token refresh failed — proceed with the cached token.
+      }
+    }
+    await _connect();
   }
 
   Duration _nextDelay() {

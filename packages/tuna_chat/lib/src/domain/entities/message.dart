@@ -13,6 +13,7 @@ class Message extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
+    this.replyCount = 0,
   });
 
   final String id;
@@ -25,12 +26,26 @@ class Message extends Equatable {
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
+  /// Number of direct thread replies (non-deleted). Populated from the
+  /// server's `reply_count` field; defaults to 0 for sent/local messages.
+  final int replyCount;
+
   bool get isDeleted => deletedAt != null;
   bool get isThread => parentId != null;
 
   @override
-  List<Object?> get props =>
-      [id, channelId, senderId, text, parentId, status, createdAt, updatedAt, deletedAt];
+  List<Object?> get props => [
+        id,
+        channelId,
+        senderId,
+        text,
+        parentId,
+        status,
+        createdAt,
+        updatedAt,
+        deletedAt,
+        replyCount,
+      ];
 
   Message copyWith({
     String? id,
@@ -42,6 +57,7 @@ class Message extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    int? replyCount,
   }) {
     return Message(
       id: id ?? this.id,
@@ -53,6 +69,7 @@ class Message extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      replyCount: replyCount ?? this.replyCount,
     );
   }
 
@@ -88,6 +105,7 @@ class Message extends Equatable {
         deletedAt: json['deleted_at'] != null
             ? DateTime.parse(json['deleted_at'] as String)
             : null,
+        replyCount: (json['reply_count'] as int?) ?? 0,
       );
 
   Map<String, dynamic> toJson() => {
@@ -100,5 +118,6 @@ class Message extends Equatable {
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
         'deleted_at': deletedAt?.toIso8601String(),
+        'reply_count': replyCount,
       };
 }

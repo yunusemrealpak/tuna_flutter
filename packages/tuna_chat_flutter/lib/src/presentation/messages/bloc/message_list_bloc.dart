@@ -19,6 +19,11 @@ class MessageListBloc extends Bloc<MessageListEvent, MessageListState> {
     on<MessageListMessageReceived>(_onMessageReceived);
     on<MessageListMessageUpdated>(_onMessageUpdated);
     on<MessageListMessageDeleted>(_onMessageDeleted);
+    on<MessageListThreadLoadRequested>(_onThreadLoad);
+    on<MessageListReactionAdded>(_onReactionAdded);
+    on<MessageListReactionRemoved>(_onReactionRemoved);
+    on<MessageListMarkAsReadRequested>(_onMarkAsRead);
+    on<MessageListReadReceiptReceived>(_onReadReceiptReceived);
   }
 
   final GetIt _sl;
@@ -101,6 +106,7 @@ class MessageListBloc extends Bloc<MessageListEvent, MessageListState> {
     final result = await _sl<MessageRepository>().sendMessage(
       event.channelId,
       text: event.text,
+      parentId: event.parentId,
       idempotencyKey: tempId,
     );
 
@@ -173,5 +179,103 @@ class MessageListBloc extends Bloc<MessageListEvent, MessageListState> {
         current.messages.where((m) => m.id != event.messageId).toList();
 
     emit(current.copyWith(messages: updatedMessages));
+  }
+
+  Future<void> _onThreadLoad(
+    MessageListThreadLoadRequested event,
+    Emitter<MessageListState> emit,
+  ) async {
+    emit(MessageListLoading());
+    final result = await _sl<MessageRepository>().getThreadMessages(
+      event.channelId,
+      event.parentId,
+      limit: _pageSize,
+    );
+    result.fold(
+      (failure) => emit(MessageListError(failure.message)),
+      (data) => emit(MessageListLoaded(
+        messages: data.messages,
+        hasOlder: data.nextCursor != null,
+        nextCursor: data.nextCursor,
+      )),
+    );
+  }
+
+  Future<void> _onReactionAdded(
+    MessageListReactionAdded event,
+    Emitter<MessageListState> emit,
+  ) async {
+    final current = state;
+    if (current is! MessageListLoaded) return;
+
+    final updated = Map<String, List<Reaction>>.from(current.reactions);
+    final existing = List<Reaction>.from(updated[event.messageId] ?? []);
+
+    // Deduplicate by (userId, type) — same user can't add same reaction twice.
+    final alreadyExists = existing.any(
+      (r) => r.userId == event.userId && r.type == event.type,
+    );
+    if (alreadyExists) return;
+
+    existing.add(Reaction(
+      id: '${event.messageId}_${event.userId}_${event.type}',
+      messageId: event.messageId,
+      channelId: '',
+      userId: event.userId,
+      type: event.type,
+      createdAt: DateTime.now().toUtc(),
+    ));
+    updated[event.messageId] = existing;
+    emit(current.copyWith(reactions: updated));
+  }
+
+  Future<void> _onReactionRemoved(
+    MessageListReactionRemoved event,
+    Emitter<MessageListState> emit,
+  ) async {
+    final current = state;
+    if (current is! MessageListLoaded) return;
+
+    final updated = Map<String, List<Reaction>>.from(current.reactions);
+    final existing = List<Reaction>.from(updated[event.messageId] ?? []);
+    existing.removeWhere(
+      (r) => r.userId == event.userId && r.type == event.type,
+    );
+    updated[event.messageId] = existing;
+    emit(current.copyWith(reactions: updated));
+  }
+
+  Future<void> _onMarkAsRead(
+    MessageListMarkAsReadRequested event,
+    Emitter<MessageListState> emit,
+  ) async {
+    // Fire-and-forget — don't update UI state on completion.
+    // Errors are silently ignored to avoid disrupting the message stream.
+    try {
+      await _sl<ChannelRepository>().markAsRead(
+        event.channelId,
+        event.lastMessageId,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _onReadReceiptReceived(
+    MessageListReadReceiptReceived event,
+    Emitter<MessageListState> emit,
+  ) async {
+    final current = state;
+    if (current is! MessageListLoaded) return;
+
+    // Mark all sent messages from the current user as read.
+    // We don't have currentUserId in the bloc, so we rely on the caller
+    // (MessageListPage) to only dispatch this event for other users' read
+    // receipts. We mark all non-temp messages with status=sent as read.
+    final updated = current.messages.map((m) {
+      if (!m.id.startsWith('tmp_') && m.status == MessageStatus.sent) {
+        return m.copyWith(status: MessageStatus.read);
+      }
+      return m;
+    }).toList();
+    emit(current.copyWith(messages: updated));
   }
 }

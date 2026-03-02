@@ -10,6 +10,7 @@ import '../bloc/typing_bloc.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
 import '../widgets/typing_indicator.dart';
+import 'thread_page.dart';
 
 class MessageListPage extends StatefulWidget {
   const MessageListPage({
@@ -99,6 +100,40 @@ class _MessageListPageState extends State<MessageListPage> {
               isTyping: false,
             ));
           }
+        case WsEventType.reactionNew:
+          final messageId = event.data['message_id'] as String?;
+          final userId = event.data['user_id'] as String?;
+          final type = event.data['type'] as String?;
+          if (messageId != null && userId != null && type != null) {
+            _messageBloc.add(MessageListReactionAdded(
+              messageId: messageId,
+              userId: userId,
+              type: type,
+            ));
+          }
+        case WsEventType.reactionDeleted:
+          final messageId = event.data['message_id'] as String?;
+          final userId = event.data['user_id'] as String?;
+          final type = event.data['type'] as String?;
+          if (messageId != null && userId != null && type != null) {
+            _messageBloc.add(MessageListReactionRemoved(
+              messageId: messageId,
+              userId: userId,
+              type: type,
+            ));
+          }
+        case WsEventType.messageRead:
+          final channelId = event.data['channel_id'] as String?;
+          final userId = event.data['user_id'] as String?;
+          // Only update read status when someone else reads this channel.
+          if (channelId == widget.channelId &&
+              userId != null &&
+              userId != widget.currentUserId) {
+            _messageBloc.add(MessageListReadReceiptReceived(
+              channelId: widget.channelId,
+              userId: userId,
+            ));
+          }
       }
     });
   }
@@ -158,10 +193,14 @@ class _MessageListPageState extends State<MessageListPage> {
             Expanded(
               child: BlocConsumer<MessageListBloc, MessageListState>(
                 listener: (context, state) {
-                  // Scroll to bottom on initial load
-                  if (state is MessageListLoaded &&
-                      state.messages.isNotEmpty) {
+                  if (state is MessageListLoaded && state.messages.isNotEmpty) {
                     _scrollToBottom();
+                    // Auto mark-as-read with the latest message on first load.
+                    final latest = state.messages.last;
+                    _messageBloc.add(MessageListMarkAsReadRequested(
+                      channelId: widget.channelId,
+                      lastMessageId: latest.id,
+                    ));
                   }
                 },
                 builder: (context, state) {
@@ -236,10 +275,45 @@ class _MessageListPageState extends State<MessageListPage> {
                         final isMe = widget.currentUserId != null &&
                             message.senderId == widget.currentUserId;
 
+                        final reactions =
+                            state.reactions[message.id] ?? const [];
                         return MessageBubble(
                           key: ValueKey(message.id),
                           message: message,
                           isMe: isMe,
+                          reactions: reactions,
+                          currentUserId: widget.currentUserId,
+                          onReplyTap: message.replyCount > 0 ||
+                                  message.parentId == null
+                              ? () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ThreadPage(
+                                        channelId: widget.channelId,
+                                        parentMessage: message,
+                                        currentUserId: widget.currentUserId,
+                                      ),
+                                    ),
+                                  )
+                              : null,
+                          onReactionAdd: (type) {
+                            try {
+                              sl<ReactionRepository>().addReaction(
+                                widget.channelId,
+                                message.id,
+                                type: type,
+                              );
+                            } catch (_) {}
+                          },
+                          onReactionRemove: (type) {
+                            try {
+                              sl<ReactionRepository>().removeReaction(
+                                widget.channelId,
+                                message.id,
+                                type,
+                              );
+                            } catch (_) {}
+                          },
                         );
                       },
                     );

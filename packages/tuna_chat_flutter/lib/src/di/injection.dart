@@ -8,10 +8,15 @@ import 'package:path_provider/path_provider.dart';
 
 import '../tuna_chat_sdk.dart';
 
-// Re-export for convenience in tests.
+// Re-export GetIt for package-internal BLoC files that import this file.
+// injection.dart is NOT in the public barrel, so this does not expose GetIt to host apps.
 export 'package:get_it/get_it.dart' show GetIt;
 
-final GetIt sl = GetIt.instance;
+// Private SDK-scoped GetIt instance — avoids collisions with host app DI containers.
+final GetIt _sdkSl = GetIt.asNewInstance();
+
+// Package-internal accessor used by BLoCs and TunaChatSDK entry point.
+GetIt get sl => _sdkSl;
 
 /// Registers all dependencies in the correct order:
 /// Core → DataSources → Repositories → Sync
@@ -26,12 +31,16 @@ Future<void> registerDependencies(TunaChatConfig config) async {
     ApiClient(
       baseUrl: config.resolvedBaseUrl,
       apiKey: config.apiKey,
+      tokenProvider: config.tokenProvider,
     ),
   );
 
   // ── 3. WebSocket client ──────────────────────────────────────────────────
   sl.registerSingleton<WsClient>(
-    WsClient(wsUrl: config.resolvedWsUrl),
+    WsClient(
+      wsUrl: config.resolvedWsUrl,
+      tokenProvider: config.tokenProvider,
+    ),
   );
 
   // ── 4. Remote data sources ───────────────────────────────────────────────
@@ -46,6 +55,9 @@ Future<void> registerDependencies(TunaChatConfig config) async {
   );
   sl.registerSingleton<PresenceRemoteDataSource>(
     PresenceRemoteDataSourceImpl(sl<ApiClient>()),
+  );
+  sl.registerSingleton<ReactionRemoteDataSource>(
+    ReactionRemoteDataSourceImpl(sl<ApiClient>()),
   );
 
   // ── 5. Repositories ──────────────────────────────────────────────────────
@@ -75,6 +87,12 @@ Future<void> registerDependencies(TunaChatConfig config) async {
     PresenceRepositoryImpl(
       remoteDataSource: sl<PresenceRemoteDataSource>(),
       wsClient: sl<WsClient>(),
+    ),
+  );
+
+  sl.registerSingleton<ReactionRepository>(
+    ReactionRepositoryImpl(
+      remoteDataSource: sl<ReactionRemoteDataSource>(),
     ),
   );
 

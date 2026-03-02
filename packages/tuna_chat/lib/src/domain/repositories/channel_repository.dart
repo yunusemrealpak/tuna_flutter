@@ -35,4 +35,6 @@ abstract class ChannelRepository {
   FutureEither<void> removeMember(String channelId, String userId);
 
   FutureEither<List<Membership>> getMembers(String channelId);
+
+  FutureEither<void> markAsRead(String channelId, String messageId);
 }

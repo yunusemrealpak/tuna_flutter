@@ -333,6 +333,29 @@ class ChannelRepositoryImpl implements ChannelRepository {
   }
 
   @override
+  FutureEither<void> markAsRead(String channelId, String messageId) async {
+    try {
+      await _remote.markAsRead(channelId, messageId);
+      // Clear local unread count for the channel.
+      final local = await _db.channelDao.findById(channelId);
+      if (local != null) {
+        await _db.channelDao.upsert(
+          _channelToCompanion(_channelFromRow(local).copyWith(unreadCount: 0)),
+        );
+      }
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, errorCode: e.errorCode));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(message: e.message));
+    } on AuthException catch (e) {
+      return Left(AuthFailure(message: e.message, errorCode: e.errorCode));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString(), errorCode: 'UNKNOWN'));
+    }
+  }
+
+  @override
   FutureEither<List<Membership>> getMembers(String channelId) async {
     try {
       // Fetch from remote — always fresh to get user display fields.

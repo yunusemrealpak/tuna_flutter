@@ -5,12 +5,15 @@ abstract class WsEventType {
   static const String messageNew = 'message.new';
   static const String messageUpdated = 'message.updated';
   static const String messageDeleted = 'message.deleted';
+  static const String messageRead = 'message.read';
   static const String channelUpdated = 'channel.updated';
   static const String channelMemberAdded = 'channel.member_added';
   static const String channelMemberRemoved = 'channel.member_removed';
   static const String userPresenceChanged = 'user.presence_changed';
   static const String userTypingStart = 'user.typing_start';
   static const String userTypingStop = 'user.typing_stop';
+  static const String reactionNew = 'reaction.new';
+  static const String reactionDeleted = 'reaction.deleted';
 
   // Client → Server
   static const String typingStart = 'typing.start';
