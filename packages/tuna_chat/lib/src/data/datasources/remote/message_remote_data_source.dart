@@ -2,11 +2,20 @@ import '../../../core/exceptions.dart';
 import 'api_client.dart';
 
 abstract class MessageRemoteDataSource {
+  /// Uploads a file to the channel storage bucket.
+  /// Returns attachment metadata: file_url, file_name, file_size, mime_type.
+  Future<Map<String, dynamic>> uploadFile(
+    String channelId,
+    List<int> fileBytes,
+    String fileName,
+  );
+
   Future<Map<String, dynamic>> sendMessage(
     String channelId, {
     required String text,
     String? parentId,
     String? idempotencyKey,
+    List<Map<String, dynamic>>? attachments,
   });
 
   Future<({List<Map<String, dynamic>> messages, String? nextCursor})> getMessages(
@@ -30,6 +39,14 @@ abstract class MessageRemoteDataSource {
     String? cursor,
     int limit = 50,
   });
+
+  /// Full-text search over messages in a channel via Meilisearch.
+  /// Returns an empty list when Meilisearch is not configured.
+  Future<List<Map<String, dynamic>>> searchMessages(
+    String channelId,
+    String query, {
+    int limit = 20,
+  });
 }
 
 class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
@@ -38,16 +55,42 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   final ApiClient _client;
 
   @override
+  Future<Map<String, dynamic>> uploadFile(
+    String channelId,
+    List<int> fileBytes,
+    String fileName,
+  ) async {
+    final response = await _client.postMultipart(
+      '/channels/$channelId/upload',
+      fileBytes: fileBytes,
+      fileName: fileName,
+    );
+    final data = response.data;
+    if (data == null) {
+      throw const ServerException(
+        message: 'Empty response from uploadFile.',
+        statusCode: 200,
+        errorCode: 'EMPTY_RESPONSE',
+      );
+    }
+    return data;
+  }
+
+  @override
   Future<Map<String, dynamic>> sendMessage(
     String channelId, {
     required String text,
     String? parentId,
     String? idempotencyKey,
+    List<Map<String, dynamic>>? attachments,
   }) async {
     final body = <String, dynamic>{
       'text': text,
       'parent_id': parentId,
     }..removeWhere((k, v) => v == null);
+    if (attachments != null && attachments.isNotEmpty) {
+      body['attachments'] = attachments;
+    }
     final headers = <String, String>{
       'X-Idempotency-Key': idempotencyKey ?? '',
     }..removeWhere((k, v) => v.isEmpty);
@@ -124,10 +167,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     String? cursor,
     int limit = 50,
   }) async {
-    // Thread messages are fetched via the same messages endpoint with a
-    // parent_id filter. There is no dedicated thread endpoint in the API
-    // contract (see api_contract.md). Backend filters by parent_id when
-    // this query param is present.
     final params = <String, String>{
       'limit': limit.toString(),
       'parent_id': parentId,
@@ -143,5 +182,24 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
         [];
     final nextCursor = response.meta?['next_cursor'] as String?;
     return (messages: items, nextCursor: nextCursor);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> searchMessages(
+    String channelId,
+    String query, {
+    int limit = 20,
+  }) async {
+    final response = await _client.get(
+      '/channels/$channelId/messages/search',
+      queryParams: {
+        'q': query,
+        'limit': limit.toString(),
+      },
+    );
+    return (response.data?['messages'] as List<dynamic>?)
+            ?.map((e) => e as Map<String, dynamic>)
+            .toList() ??
+        [];
   }
 }

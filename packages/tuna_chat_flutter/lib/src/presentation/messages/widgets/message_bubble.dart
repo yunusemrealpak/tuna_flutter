@@ -1,6 +1,7 @@
 import 'package:tuna_chat/tuna_chat.dart';
 import 'package:flutter/material.dart';
 
+import 'attachment_view.dart';
 import 'reaction_bar.dart';
 import 'reaction_picker.dart';
 
@@ -125,6 +126,15 @@ class MessageBubble extends StatelessWidget {
                                 : FontStyle.normal,
                           ),
                         ),
+                        // ── Attachments ──────────────────────────────────
+                        if (!message.isDeleted &&
+                            message.attachments.isNotEmpty)
+                          ...message.attachments.map(
+                            (a) => AttachmentView(
+                              attachment: a,
+                              bubbleColor: bubbleColor,
+                            ),
+                          ),
                         const SizedBox(height: 4),
                         Row(
                           mainAxisSize: MainAxisSize.min,

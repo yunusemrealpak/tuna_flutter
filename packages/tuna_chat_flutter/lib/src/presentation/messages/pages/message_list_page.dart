@@ -10,6 +10,7 @@ import '../bloc/typing_bloc.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
 import '../widgets/typing_indicator.dart';
+import 'message_search_page.dart';
 import 'thread_page.dart';
 
 class MessageListPage extends StatefulWidget {
@@ -125,13 +126,16 @@ class _MessageListPageState extends State<MessageListPage> {
         case WsEventType.messageRead:
           final channelId = event.data['channel_id'] as String?;
           final userId = event.data['user_id'] as String?;
+          final messageId = event.data['message_id'] as String?;
           // Only update read status when someone else reads this channel.
           if (channelId == widget.channelId &&
               userId != null &&
+              messageId != null &&
               userId != widget.currentUserId) {
             _messageBloc.add(MessageListReadReceiptReceived(
               channelId: widget.channelId,
               userId: userId,
+              messageId: messageId,
             ));
           }
       }
@@ -187,6 +191,21 @@ class _MessageListPageState extends State<MessageListPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.channelName),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: 'Search messages',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MessageSearchPage(
+                    channelId: widget.channelId,
+                    channelName: widget.channelName,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         body: Column(
           children: [
@@ -337,10 +356,12 @@ class _MessageListPageState extends State<MessageListPage> {
                 return MessageInput(
                   channelId: widget.channelId,
                   isSending: isSending,
-                  onSend: (text) {
+                  onSend: (text, fileBytes, fileName) {
                     _messageBloc.add(MessageListSendRequested(
                       channelId: widget.channelId,
                       text: text,
+                      fileBytes: fileBytes,
+                      fileName: fileName,
                     ));
                     _scrollToBottom();
                   },

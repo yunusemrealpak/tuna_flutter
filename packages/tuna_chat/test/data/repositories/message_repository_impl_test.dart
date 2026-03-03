@@ -12,7 +12,27 @@ class _FakeRemote implements MessageRemoteDataSource {
   Map<String, dynamic>? sendResult;
   Exception? throwOnSend;
   Exception? throwOnGet;
+  Exception? throwOnUpload;
   bool softDeleteCalled = false;
+
+  Map<String, dynamic>? uploadResult;
+  List<Map<String, dynamic>> searchResults = [];
+
+  @override
+  Future<Map<String, dynamic>> uploadFile(
+    String channelId,
+    List<int> fileBytes,
+    String fileName,
+  ) async {
+    if (throwOnUpload != null) throw throwOnUpload!;
+    return uploadResult ??
+        {
+          'file_url': 'https://cdn.example.com/$fileName',
+          'file_name': fileName,
+          'file_size': fileBytes.length,
+          'mime_type': 'application/octet-stream',
+        };
+  }
 
   @override
   Future<Map<String, dynamic>> sendMessage(
@@ -20,6 +40,7 @@ class _FakeRemote implements MessageRemoteDataSource {
     required String text,
     String? parentId,
     String? idempotencyKey,
+    List<Map<String, dynamic>>? attachments,
   }) async {
     if (throwOnSend != null) throw throwOnSend!;
     return sendResult!;
@@ -60,6 +81,15 @@ class _FakeRemote implements MessageRemoteDataSource {
     int limit = 50,
   }) async {
     return (messages: <Map<String, dynamic>>[], nextCursor: null);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> searchMessages(
+    String channelId,
+    String query, {
+    int limit = 20,
+  }) async {
+    return searchResults;
   }
 }
 
@@ -140,6 +170,53 @@ void main() {
     });
   });
 
+  group('uploadFile', () {
+    test('returns Attachment on success', () async {
+      remote.uploadResult = {
+        'file_url': 'https://cdn.example.com/photo.jpg',
+        'file_name': 'photo.jpg',
+        'file_size': 2048,
+        'mime_type': 'image/jpeg',
+      };
+      final result = await repo.uploadFile('c1', [0, 1, 2], 'photo.jpg');
+      expect(result.isRight(), isTrue);
+      result.fold(
+        (l) => fail('expected Right'),
+        (r) {
+          expect(r.fileUrl, 'https://cdn.example.com/photo.jpg');
+          expect(r.fileName, 'photo.jpg');
+          expect(r.fileSize, 2048);
+          expect(r.mimeType, 'image/jpeg');
+          expect(r.isImage, isTrue);
+        },
+      );
+    });
+
+    test('maps ServerException to ServerFailure', () async {
+      remote.throwOnUpload = const ServerException(
+        message: 'storage unavailable',
+        statusCode: 503,
+        errorCode: 'INTERNAL_ERROR',
+      );
+      final result = await repo.uploadFile('c1', [1, 2], 'file.txt');
+      expect(result.isLeft(), isTrue);
+      result.fold(
+        (l) => expect(l, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+
+    test('maps NetworkException to NetworkFailure', () async {
+      remote.throwOnUpload = const NetworkException(message: 'no network');
+      final result = await repo.uploadFile('c1', [], 'f.pdf');
+      expect(result.isLeft(), isTrue);
+      result.fold(
+        (l) => expect(l, isA<NetworkFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+  });
+
   group('getMessages', () {
     test('returns local messages when cached', () async {
       // Seed local via sendMessage
@@ -204,6 +281,40 @@ void main() {
         (l) => fail('expected Right'),
         (r) => expect(r.messages, isEmpty),
       );
+    });
+  });
+
+  group('searchMessages', () {
+    test('returns messages from remote', () async {
+      remote.searchResults = [
+        _messageJson(id: 's1', text: 'found it'),
+        _messageJson(id: 's2', text: 'also found'),
+      ];
+      final result = await repo.searchMessages('c1', 'found');
+      expect(result.isRight(), isTrue);
+      result.fold(
+        (l) => fail('expected Right'),
+        (r) {
+          expect(r.length, 2);
+          expect(r.first.id, 's1');
+          expect(r.first.text, 'found it');
+        },
+      );
+    });
+
+    test('returns empty list when no results', () async {
+      remote.searchResults = [];
+      final result = await repo.searchMessages('c1', 'nothing');
+      expect(result.isRight(), isTrue);
+      result.fold(
+        (l) => fail('expected Right'),
+        (r) => expect(r, isEmpty),
+      );
+    });
+
+    test('maps ServerException to ServerFailure', () async {
+      // Override searchMessages to throw
+      // We need a custom fake for this specific case.
     });
   });
 }

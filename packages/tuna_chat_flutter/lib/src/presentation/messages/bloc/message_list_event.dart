@@ -13,10 +13,19 @@ class MessageListSendRequested extends MessageListEvent {
   final String channelId;
   final String text;
   final String? parentId;
+
+  /// Raw file bytes to upload before sending (T111).
+  final List<int>? fileBytes;
+
+  /// Original filename of the attachment (e.g. "photo.jpg").
+  final String? fileName;
+
   MessageListSendRequested({
     required this.channelId,
     required this.text,
     this.parentId,
+    this.fileBytes,
+    this.fileName,
   });
 }
 
@@ -81,12 +90,15 @@ class MessageListMarkAsReadRequested extends MessageListEvent {
 }
 
 /// Dispatched when a `message.read` WS event arrives — another user read
-/// this channel. Updates status of the current user's sent messages to read.
+/// this channel up to [messageId]. Updates status of the current user's sent
+/// messages whose ID is <= [messageId] to read.
 class MessageListReadReceiptReceived extends MessageListEvent {
   final String channelId;
   final String userId;
+  final String messageId;
   MessageListReadReceiptReceived({
     required this.channelId,
     required this.userId,
+    required this.messageId,
   });
 }

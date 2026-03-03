@@ -71,7 +71,64 @@ class ApiClient {
   }) =>
       _request('PATCH', path, body: body);
 
-  Future<ApiResponse> delete(String path) => _request('DELETE', path);
+  Future<ApiResponse> delete(
+    String path, {
+    Map<String, dynamic>? body,
+  }) =>
+      _request('DELETE', path, body: body);
+
+  /// Uploads a file via `multipart/form-data POST`.
+  ///
+  /// The file is sent as the `file` form field. Auth headers are applied
+  /// identically to regular requests. On 401 a single token-refresh retry
+  /// is attempted via [tokenProvider].
+  Future<ApiResponse> postMultipart(
+    String path, {
+    required List<int> fileBytes,
+    required String fileName,
+    bool allowRetry = true,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl$path');
+      final request = http.MultipartRequest('POST', uri)
+        ..headers.addAll({
+          'Accept': 'application/json',
+          'X-API-Key': apiKey,
+          if (_token != null) 'Authorization': 'Bearer $_token',
+        })
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            fileBytes,
+            filename: fileName,
+          ),
+        );
+
+      final streamed =
+          await request.send().timeout(ApiConstants.receiveTimeout);
+      final response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 401 && allowRetry && !_isRefreshing) {
+        final refreshed = await _tryRefreshToken();
+        if (refreshed) {
+          return postMultipart(path,
+              fileBytes: fileBytes, fileName: fileName, allowRetry: false);
+        } else {
+          onAuthFailure?.call();
+          throw const AuthException(
+            message: 'Session expired. Please reconnect.',
+            errorCode: 'UNAUTHORIZED',
+          );
+        }
+      }
+
+      return _parseResponse(response);
+    } on TimeoutException {
+      throw const NetworkException(message: 'Request timed out.');
+    } on http.ClientException catch (e) {
+      throw NetworkException(message: e.message);
+    }
+  }
 
   // ── Internal ─────────────────────────────────────────────────────────────
 
@@ -157,7 +214,7 @@ class ApiClient {
             .timeout(ApiConstants.receiveTimeout);
       case 'DELETE':
         return _http
-            .delete(uri, headers: headers)
+            .delete(uri, headers: headers, body: encodedBody)
             .timeout(ApiConstants.receiveTimeout);
       default:
         throw ArgumentError('Unsupported HTTP method: $method');

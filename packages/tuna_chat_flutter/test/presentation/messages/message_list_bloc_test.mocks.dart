@@ -8,7 +8,8 @@ import 'dart:async' as _i4;
 import 'package:dartz/dartz.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:tuna_chat/src/core/failures.dart' as _i5;
-import 'package:tuna_chat/src/domain/entities/message.dart' as _i6;
+import 'package:tuna_chat/src/domain/entities/attachment.dart' as _i6;
+import 'package:tuna_chat/src/domain/entities/message.dart' as _i7;
 import 'package:tuna_chat/src/domain/repositories/message_repository.dart'
     as _i3;
 
@@ -41,11 +42,34 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
   }
 
   @override
-  _i4.Future<_i2.Either<_i5.Failure, _i6.Message>> sendMessage(
+  _i4.Future<_i2.Either<_i5.Failure, _i6.Attachment>> uploadFile(
+    String? channelId,
+    List<int>? fileBytes,
+    String? fileName,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#uploadFile, [channelId, fileBytes, fileName]),
+            returnValue:
+                _i4.Future<_i2.Either<_i5.Failure, _i6.Attachment>>.value(
+                  _FakeEither_0<_i5.Failure, _i6.Attachment>(
+                    this,
+                    Invocation.method(#uploadFile, [
+                      channelId,
+                      fileBytes,
+                      fileName,
+                    ]),
+                  ),
+                ),
+          )
+          as _i4.Future<_i2.Either<_i5.Failure, _i6.Attachment>>);
+
+  @override
+  _i4.Future<_i2.Either<_i5.Failure, _i7.Message>> sendMessage(
     String? channelId, {
     required String? text,
     String? parentId,
     String? idempotencyKey,
+    List<_i6.Attachment>? attachments,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
@@ -55,10 +79,11 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
                 #text: text,
                 #parentId: parentId,
                 #idempotencyKey: idempotencyKey,
+                #attachments: attachments,
               },
             ),
-            returnValue: _i4.Future<_i2.Either<_i5.Failure, _i6.Message>>.value(
-              _FakeEither_0<_i5.Failure, _i6.Message>(
+            returnValue: _i4.Future<_i2.Either<_i5.Failure, _i7.Message>>.value(
+              _FakeEither_0<_i5.Failure, _i7.Message>(
                 this,
                 Invocation.method(
                   #sendMessage,
@@ -67,16 +92,17 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
                     #text: text,
                     #parentId: parentId,
                     #idempotencyKey: idempotencyKey,
+                    #attachments: attachments,
                   },
                 ),
               ),
             ),
           )
-          as _i4.Future<_i2.Either<_i5.Failure, _i6.Message>>);
+          as _i4.Future<_i2.Either<_i5.Failure, _i7.Message>>);
 
   @override
   _i4.Future<
-    _i2.Either<_i5.Failure, ({List<_i6.Message> messages, String? nextCursor})>
+    _i2.Either<_i5.Failure, ({List<_i7.Message> messages, String? nextCursor})>
   >
   getMessages(
     String? channelId, {
@@ -94,12 +120,12 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
                 _i4.Future<
                   _i2.Either<
                     _i5.Failure,
-                    ({List<_i6.Message> messages, String? nextCursor})
+                    ({List<_i7.Message> messages, String? nextCursor})
                   >
                 >.value(
                   _FakeEither_0<
                     _i5.Failure,
-                    ({List<_i6.Message> messages, String? nextCursor})
+                    ({List<_i7.Message> messages, String? nextCursor})
                   >(
                     this,
                     Invocation.method(
@@ -113,12 +139,12 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
           as _i4.Future<
             _i2.Either<
               _i5.Failure,
-              ({List<_i6.Message> messages, String? nextCursor})
+              ({List<_i7.Message> messages, String? nextCursor})
             >
           >);
 
   @override
-  _i4.Future<_i2.Either<_i5.Failure, _i6.Message>> updateMessage(
+  _i4.Future<_i2.Either<_i5.Failure, _i7.Message>> updateMessage(
     String? channelId,
     String? messageId, {
     required String? text,
@@ -129,8 +155,8 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
               [channelId, messageId],
               {#text: text},
             ),
-            returnValue: _i4.Future<_i2.Either<_i5.Failure, _i6.Message>>.value(
-              _FakeEither_0<_i5.Failure, _i6.Message>(
+            returnValue: _i4.Future<_i2.Either<_i5.Failure, _i7.Message>>.value(
+              _FakeEither_0<_i5.Failure, _i7.Message>(
                 this,
                 Invocation.method(
                   #updateMessage,
@@ -140,7 +166,7 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
               ),
             ),
           )
-          as _i4.Future<_i2.Either<_i5.Failure, _i6.Message>>);
+          as _i4.Future<_i2.Either<_i5.Failure, _i7.Message>>);
 
   @override
   _i4.Future<_i2.Either<_i5.Failure, void>> deleteMessage(
@@ -160,7 +186,7 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
 
   @override
   _i4.Future<
-    _i2.Either<_i5.Failure, ({List<_i6.Message> messages, String? nextCursor})>
+    _i2.Either<_i5.Failure, ({List<_i7.Message> messages, String? nextCursor})>
   >
   getThreadMessages(
     String? channelId,
@@ -178,12 +204,12 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
                 _i4.Future<
                   _i2.Either<
                     _i5.Failure,
-                    ({List<_i6.Message> messages, String? nextCursor})
+                    ({List<_i7.Message> messages, String? nextCursor})
                   >
                 >.value(
                   _FakeEither_0<
                     _i5.Failure,
-                    ({List<_i6.Message> messages, String? nextCursor})
+                    ({List<_i7.Message> messages, String? nextCursor})
                   >(
                     this,
                     Invocation.method(
@@ -197,7 +223,33 @@ class MockMessageRepository extends _i1.Mock implements _i3.MessageRepository {
           as _i4.Future<
             _i2.Either<
               _i5.Failure,
-              ({List<_i6.Message> messages, String? nextCursor})
+              ({List<_i7.Message> messages, String? nextCursor})
             >
           >);
+
+  @override
+  _i4.Future<_i2.Either<_i5.Failure, List<_i7.Message>>> searchMessages(
+    String? channelId,
+    String? query, {
+    int? limit = 20,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #searchMessages,
+              [channelId, query],
+              {#limit: limit},
+            ),
+            returnValue:
+                _i4.Future<_i2.Either<_i5.Failure, List<_i7.Message>>>.value(
+                  _FakeEither_0<_i5.Failure, List<_i7.Message>>(
+                    this,
+                    Invocation.method(
+                      #searchMessages,
+                      [channelId, query],
+                      {#limit: limit},
+                    ),
+                  ),
+                ),
+          )
+          as _i4.Future<_i2.Either<_i5.Failure, List<_i7.Message>>>);
 }

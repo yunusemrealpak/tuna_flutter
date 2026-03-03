@@ -216,12 +216,13 @@ void main() {
     final sentMsg = makeMessage('msg-1');
 
     blocTest<MessageListBloc, MessageListState>(
-      'marks sent messages as read',
+      'marks sent messages as read up to messageId',
       build: buildBloc,
       seed: () => MessageListLoaded(messages: [sentMsg], hasOlder: false),
       act: (bloc) => bloc.add(MessageListReadReceiptReceived(
         channelId: 'ch-1',
         userId: 'user-2',
+        messageId: 'msg-1',
       )),
       expect: () => [
         predicate<MessageListState>(
@@ -229,6 +230,34 @@ void main() {
               s is MessageListLoaded &&
               s.messages.first.status == MessageStatus.read,
           'message marked read',
+        ),
+      ],
+    );
+
+    blocTest<MessageListBloc, MessageListState>(
+      'does not mark messages beyond messageId',
+      build: buildBloc,
+      seed: () => MessageListLoaded(
+        messages: [
+          makeMessage('msg-1'),
+          makeMessage('msg-2'),
+          makeMessage('msg-3'),
+        ],
+        hasOlder: false,
+      ),
+      act: (bloc) => bloc.add(MessageListReadReceiptReceived(
+        channelId: 'ch-1',
+        userId: 'user-2',
+        messageId: 'msg-2',
+      )),
+      expect: () => [
+        predicate<MessageListState>(
+          (s) =>
+              s is MessageListLoaded &&
+              s.messages[0].status == MessageStatus.read &&
+              s.messages[1].status == MessageStatus.read &&
+              s.messages[2].status == MessageStatus.sent,
+          'only messages <= messageId are marked read',
         ),
       ],
     );
@@ -246,6 +275,7 @@ void main() {
       act: (bloc) => bloc.add(MessageListReadReceiptReceived(
         channelId: 'ch-1',
         userId: 'user-2',
+        messageId: 'msg-2',
       )),
       expect: () => [
         predicate<MessageListState>(

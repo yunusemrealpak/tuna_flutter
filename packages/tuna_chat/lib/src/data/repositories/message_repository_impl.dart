@@ -6,6 +6,7 @@ import 'package:dartz/dartz.dart';
 import '../../core/exceptions.dart';
 import '../../core/failures.dart';
 import '../../core/type_defs.dart';
+import '../../domain/entities/attachment.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/message_repository.dart';
 import '../datasources/local/app_database.dart';
@@ -75,11 +76,32 @@ class MessageRepositoryImpl implements MessageRepository {
   // ── MessageRepository ────────────────────────────────────────────────────
 
   @override
+  FutureEither<Attachment> uploadFile(
+    String channelId,
+    List<int> fileBytes,
+    String fileName,
+  ) async {
+    try {
+      final data = await _remote.uploadFile(channelId, fileBytes, fileName);
+      return Right(Attachment.fromJson(data));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, errorCode: e.errorCode));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(message: e.message));
+    } on AuthException catch (e) {
+      return Left(AuthFailure(message: e.message, errorCode: e.errorCode));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString(), errorCode: 'UNKNOWN'));
+    }
+  }
+
+  @override
   FutureEither<Message> sendMessage(
     String channelId, {
     required String text,
     String? parentId,
     String? idempotencyKey,
+    List<Attachment>? attachments,
   }) async {
     try {
       final data = await _remote.sendMessage(
@@ -87,6 +109,7 @@ class MessageRepositoryImpl implements MessageRepository {
         text: text,
         parentId: parentId,
         idempotencyKey: idempotencyKey,
+        attachments: attachments?.map((a) => a.toJson()).toList(),
       );
       final message = _messageFromJson(data);
       await _db.messageDao.upsert(_messageToCompanion(message));
@@ -279,6 +302,27 @@ class MessageRepositoryImpl implements MessageRepository {
           .upsertAll(messages.map(_messageToCompanion).toList());
     } catch (_) {
       // Ignore background sync errors.
+    }
+  }
+
+  @override
+  FutureEither<List<Message>> searchMessages(
+    String channelId,
+    String query, {
+    int limit = 20,
+  }) async {
+    try {
+      final items = await _remote.searchMessages(channelId, query, limit: limit);
+      final messages = items.map(_messageFromJson).toList();
+      return Right(messages);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, errorCode: e.errorCode));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(message: e.message));
+    } on AuthException catch (e) {
+      return Left(AuthFailure(message: e.message, errorCode: e.errorCode));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString(), errorCode: 'UNKNOWN'));
     }
   }
 }

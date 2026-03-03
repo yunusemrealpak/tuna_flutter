@@ -103,11 +103,39 @@ class MessageListBloc extends Bloc<MessageListEvent, MessageListState> {
       isSending: true,
     ));
 
+    // ── T111: Upload attachment first (if any) ─────────────────────────────
+    List<Attachment>? attachments;
+    if (event.fileBytes != null && event.fileName != null) {
+      final uploadResult = await _sl<MessageRepository>().uploadFile(
+        event.channelId,
+        event.fileBytes!,
+        event.fileName!,
+      );
+      uploadResult.fold(
+        (failure) {
+          // Upload failed — mark message as failed immediately.
+          final stateNow = state;
+          if (stateNow is MessageListLoaded) {
+            final updated = stateNow.messages.map((m) {
+              if (m.id == tempId) return m.copyWith(status: MessageStatus.failed);
+              return m;
+            }).toList();
+            emit(stateNow.copyWith(messages: updated, isSending: false));
+          }
+          return;
+        },
+        (attachment) => attachments = [attachment],
+      );
+      // If upload failed we already emitted; bail out.
+      if (attachments == null && event.fileBytes != null) return;
+    }
+
     final result = await _sl<MessageRepository>().sendMessage(
       event.channelId,
       text: event.text,
       parentId: event.parentId,
       idempotencyKey: tempId,
+      attachments: attachments,
     );
 
     final stateAfterSend = state;
@@ -266,12 +294,14 @@ class MessageListBloc extends Bloc<MessageListEvent, MessageListState> {
     final current = state;
     if (current is! MessageListLoaded) return;
 
-    // Mark all sent messages from the current user as read.
-    // We don't have currentUserId in the bloc, so we rely on the caller
-    // (MessageListPage) to only dispatch this event for other users' read
-    // receipts. We mark all non-temp messages with status=sent as read.
+    // Mark sent messages as read only up to event.messageId.
+    // ULIDs are lexicographically sortable by creation time, so string
+    // comparison correctly identifies messages that were sent before or at
+    // the point the other user read up to.
     final updated = current.messages.map((m) {
-      if (!m.id.startsWith('tmp_') && m.status == MessageStatus.sent) {
+      if (!m.id.startsWith('tmp_') &&
+          m.status == MessageStatus.sent &&
+          m.id.compareTo(event.messageId) <= 0) {
         return m.copyWith(status: MessageStatus.read);
       }
       return m;

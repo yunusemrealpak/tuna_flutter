@@ -59,6 +59,9 @@ Future<void> registerDependencies(TunaChatConfig config) async {
   sl.registerSingleton<ReactionRemoteDataSource>(
     ReactionRemoteDataSourceImpl(sl<ApiClient>()),
   );
+  sl.registerSingleton<DeviceRemoteDataSource>(
+    DeviceRemoteDataSourceImpl(sl<ApiClient>()),
+  );
 
   // ── 5. Repositories ──────────────────────────────────────────────────────
   sl.registerSingleton<ConnectionRepository>(
@@ -94,6 +97,10 @@ Future<void> registerDependencies(TunaChatConfig config) async {
     ReactionRepositoryImpl(
       remoteDataSource: sl<ReactionRemoteDataSource>(),
     ),
+  );
+
+  sl.registerSingleton<DeviceRepository>(
+    DeviceRepositoryImpl(remoteDataSource: sl<DeviceRemoteDataSource>()),
   );
 
   // ── 6. Sync infrastructure ───────────────────────────────────────────────

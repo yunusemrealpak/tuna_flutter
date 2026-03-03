@@ -223,11 +223,13 @@ class _ThreadPageState extends State<ThreadPage> {
                   channelId: widget.channelId,
                   isSending: isSending,
                   hintText: 'Reply in thread…',
-                  onSend: (text) {
+                  onSend: (text, fileBytes, fileName) {
                     _threadBloc.add(MessageListSendRequested(
                       channelId: widget.channelId,
                       text: text,
                       parentId: widget.parentMessage.id,
+                      fileBytes: fileBytes,
+                      fileName: fileName,
                     ));
                     _scrollToBottom();
                   },

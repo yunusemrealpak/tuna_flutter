@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'attachment.dart';
+
 enum MessageStatus { sending, sent, delivered, read, failed }
 
 class Message extends Equatable {
@@ -14,6 +16,7 @@ class Message extends Equatable {
     required this.updatedAt,
     this.deletedAt,
     this.replyCount = 0,
+    this.attachments = const [],
   });
 
   final String id;
@@ -30,6 +33,9 @@ class Message extends Equatable {
   /// server's `reply_count` field; defaults to 0 for sent/local messages.
   final int replyCount;
 
+  /// File attachments included with this message.
+  final List<Attachment> attachments;
+
   bool get isDeleted => deletedAt != null;
   bool get isThread => parentId != null;
 
@@ -45,6 +51,7 @@ class Message extends Equatable {
         updatedAt,
         deletedAt,
         replyCount,
+        attachments,
       ];
 
   Message copyWith({
@@ -58,6 +65,7 @@ class Message extends Equatable {
     DateTime? updatedAt,
     DateTime? deletedAt,
     int? replyCount,
+    List<Attachment>? attachments,
   }) {
     return Message(
       id: id ?? this.id,
@@ -70,6 +78,7 @@ class Message extends Equatable {
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
       replyCount: replyCount ?? this.replyCount,
+      attachments: attachments ?? this.attachments,
     );
   }
 
@@ -106,6 +115,10 @@ class Message extends Equatable {
             ? DateTime.parse(json['deleted_at'] as String)
             : null,
         replyCount: (json['reply_count'] as int?) ?? 0,
+        attachments: (json['attachments'] as List<dynamic>?)
+                ?.map((e) => Attachment.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
       );
 
   Map<String, dynamic> toJson() => {
@@ -119,5 +132,6 @@ class Message extends Equatable {
         'updated_at': updatedAt.toIso8601String(),
         'deleted_at': deletedAt?.toIso8601String(),
         'reply_count': replyCount,
+        'attachments': attachments.map((a) => a.toJson()).toList(),
       };
 }

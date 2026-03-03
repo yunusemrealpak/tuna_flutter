@@ -15,6 +15,7 @@ export 'src/domain/entities/channel.dart';
 export 'src/domain/entities/message.dart';
 export 'src/domain/entities/membership.dart';
 export 'src/domain/entities/reaction.dart';
+export 'src/domain/entities/attachment.dart';
 
 // Domain — Repository interfaces
 export 'src/domain/repositories/connection_repository.dart';
@@ -23,6 +24,7 @@ export 'src/domain/repositories/message_repository.dart';
 export 'src/domain/repositories/user_repository.dart';
 export 'src/domain/repositories/presence_repository.dart';
 export 'src/domain/repositories/reaction_repository.dart';
+export 'src/domain/repositories/device_repository.dart';
 
 // Data — Remote
 export 'src/data/datasources/remote/api_client.dart';
@@ -33,6 +35,7 @@ export 'src/data/datasources/remote/message_remote_data_source.dart';
 export 'src/data/datasources/remote/user_remote_data_source.dart';
 export 'src/data/datasources/remote/presence_remote_data_source.dart';
 export 'src/data/datasources/remote/reaction_remote_data_source.dart';
+export 'src/data/datasources/remote/device_remote_data_source.dart';
 
 // Data — Local (Drift)
 export 'src/data/datasources/local/app_database.dart';
@@ -54,6 +57,7 @@ export 'src/data/repositories/message_repository_impl.dart';
 export 'src/data/repositories/user_repository_impl.dart';
 export 'src/data/repositories/presence_repository_impl.dart';
 export 'src/data/repositories/reaction_repository_impl.dart';
+export 'src/data/repositories/device_repository_impl.dart';
 
 // Data — Sync
 export 'src/data/sync/event_handler.dart';
