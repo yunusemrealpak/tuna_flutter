@@ -1,6 +1,34 @@
-/// tuna_chat_flutter — Flutter UI package for TunaChat SDK.
+/// tuna_chat_flutter — Flutter SDK for TunaChat real-time chat as a service.
 ///
-/// Provides BLoC state management, widgets, and pages built on top of tuna_chat.
+/// Drop pre-built pages and widgets into your Flutter app in minutes.
+/// Powered by BLoC, Drift, and WebSockets.
+///
+/// ## Quick start
+///
+/// ```dart
+/// import 'package:tuna_chat_flutter/tuna_chat_flutter.dart';
+///
+/// // 1. Initialize once at app startup:
+/// await TunaChatSDK.init(
+///   config: TunaChatConfig(
+///     apiKey: 'tuna_key_your_key',
+///     baseUrl: 'https://chat.example.com/api/v1',
+///     wsUrl: 'wss://chat.example.com/api/v1/ws',
+///   ),
+/// );
+///
+/// // 2. Connect after your own auth completes:
+/// final user = await TunaChatSDK.instance.connectUser(
+///   userId: 'host-user-123',
+///   token: hostSignedJwt,
+/// );
+///
+/// // 3. Show the channel list:
+/// BlocProvider<ChannelListBloc>(
+///   create: (_) => ChannelListBloc(),
+///   child: ChannelListPage(currentUserId: user.id),
+/// )
+/// ```
 library;
 
 export 'package:tuna_chat/tuna_chat.dart';

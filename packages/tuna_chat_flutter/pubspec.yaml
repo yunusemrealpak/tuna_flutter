@@ -1,7 +1,12 @@
 name: tuna_chat_flutter
-description: Flutter UI package for TunaChat SDK. BLoC state management, widgets, pages.
+description: Flutter SDK for TunaChat — real-time chat as a service. Pre-built BLoC state management, pages, and widgets. Reactions, threads, file upload, push notifications, search, and read receipts.
 version: 0.1.0
+# Monorepo: path dependency on tuna_chat. Before publishing to pub.dev,
+# replace with a hosted version constraint (tuna_chat: ^0.1.0) and remove publish_to.
 publish_to: none
+homepage: https://github.com/yunusemrealpak/tuna_flutter
+repository: https://github.com/yunusemrealpak/tuna_flutter
+issue_tracker: https://github.com/yunusemrealpak/tuna_flutter/issues
 
 environment:
   sdk: ^3.10.1

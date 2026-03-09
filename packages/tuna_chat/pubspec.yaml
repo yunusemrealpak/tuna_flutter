@@ -1,6 +1,9 @@
 name: tuna_chat
-description: Pure Dart core library for TunaChat SDK. Domain entities, repository interfaces, data sources, offline sync.
+description: Pure Dart core library for TunaChat SDK. Domain entities, repository interfaces, HTTP/WebSocket clients, offline-first Drift/SQLite storage.
 version: 0.1.0
+homepage: https://github.com/yunusemrealpak/tuna_flutter
+repository: https://github.com/yunusemrealpak/tuna_flutter
+issue_tracker: https://github.com/yunusemrealpak/tuna_flutter/issues
 
 environment:
   sdk: ^3.10.1

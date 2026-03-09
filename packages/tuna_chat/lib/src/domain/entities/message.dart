@@ -2,8 +2,29 @@ import 'package:equatable/equatable.dart';
 
 import 'attachment.dart';
 
-enum MessageStatus { sending, sent, delivered, read, failed }
+/// The delivery/sync status of a [Message].
+enum MessageStatus {
+  /// The message is being sent (optimistic, local only).
+  sending,
 
+  /// The message has been received by the server.
+  sent,
+
+  /// The message has been delivered to the channel.
+  delivered,
+
+  /// The message has been read by the recipient(s).
+  read,
+
+  /// The message failed to send and needs retry or user action.
+  failed,
+}
+
+/// A chat message in a [Channel].
+///
+/// Messages are sent via [MessageRepository.sendMessage] and received in
+/// real time via [WsEventType.messageNew] WebSocket events. Thread replies
+/// have a non-null [parentId] and are accessible via [MessageRepository.getThreadMessages].
 class Message extends Equatable {
   const Message({
     required this.id,
@@ -19,14 +40,31 @@ class Message extends Equatable {
     this.attachments = const [],
   });
 
+  /// Internal ULID of this message.
   final String id;
+
+  /// ID of the channel this message belongs to.
   final String channelId;
+
+  /// ID of the user who sent this message.
   final String senderId;
+
+  /// Text content of the message.
   final String text;
+
+  /// If non-null, this message is a thread reply to the message with this ID.
   final String? parentId;
+
+  /// Current delivery status.
   final MessageStatus status;
+
+  /// When this message was created.
   final DateTime createdAt;
+
+  /// When this message was last updated (e.g. edited).
   final DateTime updatedAt;
+
+  /// Non-null when the message has been soft-deleted.
   final DateTime? deletedAt;
 
   /// Number of direct thread replies (non-deleted). Populated from the
@@ -36,7 +74,10 @@ class Message extends Equatable {
   /// File attachments included with this message.
   final List<Attachment> attachments;
 
+  /// Whether this message has been soft-deleted.
   bool get isDeleted => deletedAt != null;
+
+  /// Whether this message is a thread reply (i.e. [parentId] is non-null).
   bool get isThread => parentId != null;
 
   @override
@@ -54,6 +95,7 @@ class Message extends Equatable {
         attachments,
       ];
 
+  /// Returns a copy of this message with the given fields replaced.
   Message copyWith({
     String? id,
     String? channelId,
@@ -102,6 +144,7 @@ class Message extends Equatable {
     }
   }
 
+  /// Deserializes a [Message] from the TunaChat API JSON response.
   factory Message.fromJson(Map<String, dynamic> json) => Message(
         id: json['id'] as String,
         channelId: json['channel_id'] as String,
@@ -121,6 +164,7 @@ class Message extends Equatable {
             const [],
       );
 
+  /// Serializes this message to a JSON map.
   Map<String, dynamic> toJson() => {
         'id': id,
         'channel_id': channelId,

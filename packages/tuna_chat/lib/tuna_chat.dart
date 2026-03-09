@@ -1,6 +1,32 @@
-/// tuna_chat — Pure Dart core library for TunaChat SDK.
+/// tuna_chat — Pure Dart core library for the TunaChat SDK.
 ///
-/// Exports domain entities, repository interfaces, and core types.
+/// Provides domain entities, repository interfaces, HTTP and WebSocket clients,
+/// and offline-first local storage built on Drift/SQLite.
+///
+/// ## Quick start
+///
+/// ```dart
+/// import 'package:tuna_chat/tuna_chat.dart';
+///
+/// final apiClient = ApiClient(
+///   baseUrl: 'https://chat.example.com/api/v1',
+///   apiKey: 'tuna_key_your_key',
+/// );
+///
+/// final channelRepo = ChannelRepositoryImpl(
+///   remoteDataSource: ChannelRemoteDataSourceImpl(apiClient),
+///   database: appDatabase,
+/// );
+///
+/// final result = await channelRepo.listChannels();
+/// result.fold(
+///   (failure) => print('Error: ${failure.message}'),
+///   (page)    => page.channels.forEach(print),
+/// );
+/// ```
+///
+/// Most Flutter apps should use the higher-level `tuna_chat_flutter` package,
+/// which adds BLoC state management and pre-built UI widgets.
 library;
 
 // Core
